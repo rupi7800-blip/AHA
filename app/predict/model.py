@@ -78,13 +78,13 @@ class BaseRate:
     def predict_proba(self, X): return np.tile(self.p, (len(X), 1))
 
 
-MAX_TRAIN = 1500   # finestra mobile di stima (barre): costo costante e modello meno legato a regimi lontani
+MAX_TRAIN = 3000   # finestra mobile di stima (barre): costo limitato anche con storie molto lunghe
 
 
 class Logit:
     name = "logit"
     def fit(self, X, y):
-        self.m = make_pipeline(StandardScaler(), LogisticRegression(C=0.05, max_iter=100, tol=1e-3))
+        self.m = make_pipeline(StandardScaler(), LogisticRegression(C=0.05, max_iter=300, tol=1e-4))
         with threadpool_limits(1):   # BLAS multi-thread su pochi dati: più lento, e si contende la CPU con gli altri processi
             self.m.fit(X, y.astype(int))
         self.cls = self.m.classes_
