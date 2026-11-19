@@ -92,3 +92,13 @@ def test_forward_log_records_once_and_evaluates_with_backtest_rules(tmp_path):
     log = tracking.evaluate(lambda coin: df)
     assert [e["status"] for e in log] == ["chiuso", "aperto"]
     assert tracking.summary(log)["n_open"] == 1 and tracking.summary(log)["long"]["n"] == 1
+
+
+def test_null_calendar_shift_is_common_across_coins_with_different_windows():
+    import pandas as pd
+    # due monete con finestre diverse: lo spostamento in giorni è unico, non posizionale per moneta
+    a = make_coin(n_days=300, seed=1); b = make_coin(n_days=200, seed=2)
+    b["out"]["dates"] = [str(d.date()) for d in pd.date_range("2024-04-01", periods=200)]
+    b["trades"] = [[b["out"]["dates"][k], 1, 0.01, 0.004, 0.2, 5.0] for k in range(0, 200, 10)]
+    r = V.pooled_side({"A": a, "B": b}, 1)
+    assert r["n"] > 0 and r["n_null"] == V.N_NULL and 0 < r["p_vs_chance"] <= 1

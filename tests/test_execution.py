@@ -92,3 +92,26 @@ def test_api_export_and_execution(tmp_path):
     assert c.get("/api/aha/execution/preview/BTC").json()["ok"] is True
     assert c.post("/api/aha/execution/paper/BTC").json()["status"] == "simulato"
     assert len(c.get("/api/aha/execution/positions").json()["positions"]) == 1
+
+
+def test_trailing_signal_without_target_does_not_crash():
+    p = ex.plan_order(sig(take_profit=None), "BTCUSDT", cfg())
+    assert p["ok"] and p["order"].take_profit is None
+
+
+def test_api_rejects_invalid_parameters_and_hides_private_keys(tmp_path):
+    from fastapi.testclient import TestClient
+    from app.main import app
+    storage.init(tmp_path / "x.sqlite")
+    import pandas as pd, numpy as np
+    n = 900; rng = np.random.default_rng(1)
+    c = 100 * np.exp(np.cumsum(rng.normal(0, 0.02, n)))
+    idx = pd.date_range("2023-01-01", periods=n, freq="D", tz="UTC")
+    storage.replace_bars("BTC", "1d", pd.DataFrame({"open": np.r_[c[0], c[:-1]], "high": c * 1.01, "low": c * 0.99, "close": c, "volume": 1.0}, index=idx))
+    storage.kv_set("analysis:BTC", {"meta": {"id": "BTC", "name": "Bitcoin"}, "aha": {"_trades": [1], "_outcomes": {}, "side": None}})
+    cl = TestClient(app)
+    for q in ("atr_stop=0", "ema_fast=nan", "horizon=1000", "trail=2", "min_votes=inf", "cost_bps=-1"):
+        assert cl.get(f"/api/aha/signal/BTC?{q}").status_code == 400, q
+    assert cl.get("/api/aha/signal/BTC?atr_stop=1.5&exit_sr=0&trail=0").status_code == 200
+    a = cl.get("/api/asset/BTC").json()
+    assert "_trades" not in a["aha"] and "_outcomes" not in a["aha"]

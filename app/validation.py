@@ -4,7 +4,7 @@ Per ogni verso (long / short) separatamente, sul solo periodo fuori campione:
 - aspettativa netta per operazione in multipli di rischio R (1R = distanza dall'ingresso allo stop), profit factor, payoff;
 - intervallo di confidenza dell'aspettativa con bootstrap a BLOCCHI DI MESE (tutte le monete insieme: le monete sono correlate);
 - "caso": gli stessi trade vengono spostati nel calendario di un numero casuale di giorni (lo STESSO per tutte le monete,
-  in modo circolare nella finestra fuori campione) e si rivalutano con le stesse uscite: si conserva numero di operazioni,
+  in modo circolare in una finestra comune) e si rivalutano con le stesse uscite: si conserva numero di operazioni,
   quota long/short, raggruppamento temporale e correlazione tra monete. p = (k+1)/(N+1);
 - correzione di Holm tra i due versi; robustezza: costi doppi, senza i 5 trade migliori, senza una moneta alla volta.
 Il periodo riservato (holdout) si calcola solo su richiesta esplicita (`window="holdout"`)."""
@@ -38,29 +38,39 @@ def _pf(net):
 
 
 def _null(coins: dict, side: int, window: str, rng) -> np.ndarray:
-    """Media di R dei trade spostati nel calendario, per ciascuno degli N_NULL spostamenti."""
+    """Media di R dei trade con il calendario spostato, per ciascuno degli N_NULL spostamenti.
+
+    Lo spostamento è in GIORNI ed è lo stesso per tutte le monete, circolare in un'unica finestra comune (dalla prima data
+    fuori campione di tutte le monete fino alla fine). Una data spostata fuori dalla finestra di una moneta, o priva di esito
+    (nessun piano di uscita), non produce un trade: si conserva così l'allineamento tra monete."""
     key = "long" if side > 0 else "short"
-    prep = []
+    prep, starts, ends = [], [], []
     for c in coins.values():
         inw = _split(c, window)
-        dates = c["out"]["dates"]
-        idx = [k for k, d in enumerate(dates) if inw(d)]
-        if not idx:
-            continue
-        arr = np.array([np.nan if x is None else x[1] for x in (c["out"][key][k] for k in idx)])
-        pos = {dates[k]: j for j, k in enumerate(idx)}
-        sig = np.array([pos[t[0]] for t in c["trades"] if t[1] == side and t[0] in pos])
-        if len(sig):
-            prep.append((arr, sig))
+        look = {}
+        for d, x in zip(c["out"]["dates"], c["out"][key]):
+            if inw(d) and x is not None:
+                look[d] = x[1]
+        sig = [t[0] for t in c["trades"] if t[1] == side and inw(t[0])]
+        if sig:
+            prep.append((look, sig))
+            ds = [d for d in c["out"]["dates"] if inw(d)]
+            starts.append(ds[0]); ends.append(ds[-1])
     if not prep:
         return np.array([])
-    W = max(len(a) for a, _ in prep)
+    import pandas as pd
+    t0 = pd.Timestamp(min(starts)); W = (pd.Timestamp(max(ends)) - t0).days + 1
     shifts = rng.integers(max(10, W // 20), max(11, W - W // 20), N_NULL)      # esclude spostamenti quasi nulli
+    base = [(look, np.array([(pd.Timestamp(d) - t0).days for d in sig])) for look, sig in prep]
     out = np.empty(N_NULL)
     for k, s in enumerate(shifts):
-        vals = np.concatenate([a[(sig + s) % len(a)] for a, sig in prep])
-        vals = vals[np.isfinite(vals)]
-        out[k] = vals.mean() if len(vals) else np.nan
+        vals = []
+        for look, offs in base:
+            for o in (offs + s) % W:
+                x = look.get(str((t0 + pd.Timedelta(days=int(o))).date()))
+                if x is not None:
+                    vals.append(x)
+        out[k] = np.mean(vals) if vals else np.nan
     return out
 
 

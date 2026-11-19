@@ -16,6 +16,9 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app import pipeline as pl, signals, storage, validation  # noqa: E402
 
+# Base ESPLICITA delle varianti: i valori predefiniti dell'app possono cambiare, il laboratorio no.
+LAB_BASE = {"exit_sr": 1, "trail": 0, "horizon": 14, "w_mr": 1.0, "w_trend": 1.0, "w_chain": 1.0, "regime": 0, "near_level": 0, "min_votes": 2}
+
 VARIANTS = {
     "V0 uscite ATR fisse (2/3)": {"exit_sr": 0},
     "V1 uscite da supporti/resistenze": {},
@@ -54,7 +57,7 @@ def main():
         for cid, (df, oc, fg) in data.items():
             if len(df) < 400:
                 continue
-            s = signals.build_signal(df, oc, fg, overrides=over)
+            s = signals.build_signal(df, oc, fg, overrides=dict(LAB_BASE, **over))
             analyses[cid] = {"aha": s}
             for k, v in s["history"]["skipped"].items():
                 skipped[k] = skipped.get(k, 0) + v

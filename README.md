@@ -41,12 +41,15 @@ recenza e ampiezza della reazione; stop oltre la zona con margine, target prima 
 ## Risultati della ricerca (cartella `research/`)
 
 Pool di 20 monete, scelta sul periodo in campione, verifica fuori campione, costi realistici:
-- Indicatori classici con uscite ATR fisse o da livelli: aspettativa ~0R, nessuna variante distinguibile dal caso.
+- Indicatori classici (8 varianti, giro 1) con uscite ATR fisse o da livelli: aspettativa tra -0,04R e +0,04R, nessuna distinguibile dal caso.
+  Un'unica cella spicca (V3 short: +1,27R) ma ha 9 operazioni fuori campione ed è rumore.
 - Supporti e resistenze come livelli di rimbalzo (`level_quality_*.md`): le zone importanti rimbalzano come punti qualunque, anche
   con molti tocchi. Servono come criterio logico di invalidazione, non come previsione.
-- Trend-following con stop mobile: long +0,4/+0,5R fuori campione, ma il caso con le stesse uscite dà +0,2/+0,35R (deriva
-  rialzista e bias di sopravvivenza delle 20 monete attuali); il contributo del tempismo è piccolo e non significativo dopo la
-  correzione per i confronti multipli. Short: +0,09/+0,15R contro ~0R del caso. Affidabilità: **bassa**.
+- Trend-following con stop mobile (giro 2, esplorativo): la variante scelta in campione (T3, quella predefinita) dà long +0,35R e
+  short +0,09R fuori campione, ma il **caso con le stesse uscite** dà +0,32R e +0,04R: il vantaggio viene dalla struttura di uscita e
+  dalla deriva rialzista dei sopravvissuti, non dal tempismo degli ingressi (p=0,41 e 0,37). Affidabilità: **bassa**.
+  Con costi doppi i long restano a +0,29R, ma senza i 5 trade migliori scendono a -0,03R: dipendono da pochi trade molto grandi.
+- Un grado "media" compare solo per T5 long (3 voti minimi, +0,78R, p=0,04 non corretto, Holm 1,00; senza i 5 migliori -0,06R): da non fidarsi.
 - Limiti: le 20 monete sono i sopravvissuti; le soglie on-chain (MVRV 1 e 3,5) vengono da letteratura costruita sull'intera storia di BTC;
   il periodo fuori campione è stato visto nel primo giro del laboratorio (il secondo è esplorativo).
 

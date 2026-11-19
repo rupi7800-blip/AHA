@@ -7,63 +7,63 @@
     "sides": {
      "long": {
       "side": "long",
-      "n": 423,
-      "months": 44,
+      "n": 407,
+      "months": 43,
       "coins": 20,
-      "expectancy_r": 0.4160825059101656,
-      "expectancy_pct": 2.9049550827423167,
-      "win_rate": 0.37825059101654845,
-      "avg_win_pct": 24.635012500000002,
-      "avg_loss_pct": -10.314851711026614,
-      "payoff": 2.3883050566461446,
-      "profit_factor": 1.4529612511915708,
+      "expectancy_r": 0.27675970515970516,
+      "expectancy_pct": 1.5334447174447172,
+      "win_rate": 0.35872235872235875,
+      "avg_win_pct": 22.676061643835617,
+      "avg_loss_pct": -10.293459770114943,
+      "payoff": 2.2029582035839055,
+      "profit_factor": 1.23230612154502,
       "worst_r": -1.3969,
       "ci95_r": [
-       -0.05550568709483901,
-       0.931618993055555
+       -0.19101173986891665,
+       0.7810899101190776
       ],
-      "p_vs_chance": 0.051,
-      "chance_mean_r": 0.2091650603321998,
+      "p_vs_chance": 0.248,
+      "chance_mean_r": 0.17560789561707799,
       "n_null": 999,
       "robust": {
-       "double_costs_r": 0.36651011540682843,
-       "without_top5_r": 0.18814688995215323,
-       "worst_leave_one_coin_out_r": 0.36151368159203984
+       "double_costs_r": 0.22721897719391593,
+       "without_top5_r": 0.05117960199004973,
+       "worst_leave_one_coin_out_r": 0.21234922279792748
       },
       "in_sample_expectancy_r": 0.821215915817392,
-      "p_holm": 0.102,
+      "p_holm": 0.248,
       "grade": "bassa",
-      "why": "aspettativa +0.42R, p=0.051: indizi troppo deboli o troppo pochi dati per fidarsi"
+      "why": "aspettativa +0.28R ma non distinguibile dal caso (p=0.25)"
      },
      "short": {
       "side": "short",
-      "n": 256,
+      "n": 255,
       "months": 41,
       "coins": 20,
-      "expectancy_r": 0.14696875,
-      "expectancy_pct": 2.3065195312499993,
-      "win_rate": 0.47265625,
+      "expectancy_r": 0.1516345098039216,
+      "expectancy_pct": 2.363294117647058,
+      "win_rate": 0.4745098039215686,
       "avg_win_pct": 16.738330578512397,
-      "avg_loss_pct": -10.62865925925926,
-      "payoff": 1.574829916946546,
-      "profit_factor": 1.411514221855793,
+      "avg_loss_pct": -10.617149253731343,
+      "payoff": 1.5765371832396342,
+      "profit_factor": 1.4235895460596697,
       "worst_r": -1.1911,
       "ci95_r": [
-       -0.22839364112256985,
-       0.5261302426470588
+       -0.22368304315476187,
+       0.5300951928741708
       ],
-      "p_vs_chance": 0.052,
-      "chance_mean_r": -0.0036419595376626646,
+      "p_vs_chance": 0.072,
+      "chance_mean_r": -0.03224692320149224,
       "n_null": 999,
       "robust": {
-       "double_costs_r": 0.10702978156628035,
-       "without_top5_r": 0.062064940239043874,
-       "worst_leave_one_coin_out_r": 0.12042704918032789
+       "double_costs_r": 0.11170708447752173,
+       "without_top5_r": 0.06648440000000005,
+       "worst_leave_one_coin_out_r": 0.12521399176954734
       },
       "in_sample_expectancy_r": 0.041146188124070594,
-      "p_holm": 0.102,
+      "p_holm": 0.144,
       "grade": "bassa",
-      "why": "aspettativa +0.15R, p=0.052: indizi troppo deboli o troppo pochi dati per fidarsi"
+      "why": "aspettativa +0.15R, p=0.072: indizi troppo deboli o troppo pochi dati per fidarsi"
      }
     }
    },
@@ -86,63 +86,63 @@
     "sides": {
      "long": {
       "side": "long",
-      "n": 353,
-      "months": 44,
+      "n": 337,
+      "months": 43,
       "coins": 20,
-      "expectancy_r": 0.47634447592067986,
-      "expectancy_pct": 2.1681019830028334,
-      "win_rate": 0.3087818696883853,
-      "avg_win_pct": 30.009394495412845,
-      "avg_loss_pct": -10.269196721311475,
-      "payoff": 2.9222728232613266,
-      "profit_factor": 1.3054415480962482,
+      "expectancy_r": 0.35213026706231454,
+      "expectancy_pct": 0.876436201780415,
+      "win_rate": 0.2878338278931751,
+      "avg_win_pct": 28.475536082474225,
+      "avg_loss_pct": -10.2782,
+      "payoff": 2.7704788856486764,
+      "profit_factor": 1.1197352162830068,
       "worst_r": -1.4395,
       "ci95_r": [
-       -0.05028830381944447,
-       1.074429560168362
+       -0.19961688078942838,
+       0.9472185420780503
       ],
-      "p_vs_chance": 0.152,
-      "chance_mean_r": 0.31353545613602274,
+      "p_vs_chance": 0.367,
+      "chance_mean_r": 0.2796691615558288,
       "n_null": 999,
       "robust": {
-       "double_costs_r": 0.4244869936691172,
-       "without_top5_r": 0.11799425287356334,
-       "worst_leave_one_coin_out_r": 0.3573340361445783
+       "double_costs_r": 0.300533746545144,
+       "without_top5_r": -0.018690060240963816,
+       "worst_leave_one_coin_out_r": 0.22014826498422715
       },
       "in_sample_expectancy_r": 0.9616885313397333,
-      "p_holm": 0.304,
+      "p_holm": 0.556,
       "grade": "bassa",
-      "why": "aspettativa +0.48R ma non distinguibile dal caso (p=0.15)"
+      "why": "aspettativa +0.35R ma non distinguibile dal caso (p=0.37)"
      },
      "short": {
       "side": "short",
-      "n": 196,
-      "months": 39,
+      "n": 194,
+      "months": 38,
       "coins": 19,
-      "expectancy_r": 0.11591428571428572,
-      "expectancy_pct": 1.9639438775510203,
-      "win_rate": 0.413265306122449,
+      "expectancy_r": 0.12693092783505155,
+      "expectancy_pct": 2.082536082474227,
+      "win_rate": 0.4175257731958763,
       "avg_win_pct": 19.764456790123454,
-      "avg_loss_pct": -10.573808695652174,
-      "payoff": 1.869189935150838,
-      "profit_factor": 1.316559867367112,
+      "avg_loss_pct": -10.59211504424779,
+      "payoff": 1.8659594148627423,
+      "profit_factor": 1.3375461292378952,
       "worst_r": -1.1322,
       "ci95_r": [
-       -0.28793547811059905,
-       0.553733180110072
+       -0.2918631889705882,
+       0.5693056506568142
       ],
-      "p_vs_chance": 0.263,
-      "chance_mean_r": 0.0404934209719924,
+      "p_vs_chance": 0.278,
+      "chance_mean_r": 0.030880411821024602,
       "n_null": 999,
       "robust": {
-       "double_costs_r": 0.073851797386025,
-       "without_top5_r": 0.0010209424083768533,
-       "worst_leave_one_coin_out_r": 0.08459617486338797
+       "double_costs_r": 0.08497788491513454,
+       "without_top5_r": 0.011113227513227554,
+       "worst_leave_one_coin_out_r": 0.09605801104972377
       },
       "in_sample_expectancy_r": 0.13147586041010018,
-      "p_holm": 0.304,
+      "p_holm": 0.556,
       "grade": "bassa",
-      "why": "aspettativa +0.12R ma non distinguibile dal caso (p=0.26)"
+      "why": "aspettativa +0.13R ma non distinguibile dal caso (p=0.28)"
      }
     }
    },
@@ -165,33 +165,33 @@
     "sides": {
      "long": {
       "side": "long",
-      "n": 252,
+      "n": 241,
       "months": 41,
       "coins": 19,
-      "expectancy_r": 0.44939444444444443,
-      "expectancy_pct": 2.6462698412698415,
-      "win_rate": 0.2976190476190476,
-      "avg_win_pct": 32.851013333333334,
-      "avg_loss_pct": -10.152350282485877,
-      "payoff": 3.23580377146813,
-      "profit_factor": 1.3711032929949705,
+      "expectancy_r": 0.34710248962655604,
+      "expectancy_pct": 1.6410829875518678,
+      "win_rate": 0.2821576763485477,
+      "avg_win_pct": 31.6202205882353,
+      "avg_loss_pct": -10.142624277456648,
+      "payoff": 3.1175581115151343,
+      "profit_factor": 1.2253985640637521,
       "worst_r": -1.4395,
       "ci95_r": [
-       -0.12396774527249764,
-       1.0932012679337826
+       -0.24326392926163812,
+       1.0134317939990511
       ],
-      "p_vs_chance": 0.348,
-      "chance_mean_r": 0.3625000599806155,
+      "p_vs_chance": 0.412,
+      "chance_mean_r": 0.31963103792020203,
       "n_null": 999,
       "robust": {
-       "double_costs_r": 0.3938593710274455,
-       "without_top5_r": 0.07774534412955468,
-       "worst_leave_one_coin_out_r": 0.3066613333333333
+       "double_costs_r": 0.2918384502015929,
+       "without_top5_r": -0.028960593220338976,
+       "worst_leave_one_coin_out_r": 0.18183255813953494
       },
       "in_sample_expectancy_r": 1.122947279996514,
-      "p_holm": 0.696,
+      "p_holm": 0.746,
       "grade": "bassa",
-      "why": "aspettativa +0.45R ma non distinguibile dal caso (p=0.35)"
+      "why": "aspettativa +0.35R ma non distinguibile dal caso (p=0.41)"
      },
      "short": {
       "side": "short",
@@ -210,8 +210,8 @@
        -0.3060844531830968,
        0.5135323656491312
       ],
-      "p_vs_chance": 0.392,
-      "chance_mean_r": 0.06344042403058796,
+      "p_vs_chance": 0.373,
+      "chance_mean_r": 0.04402721900698924,
       "n_null": 999,
       "robust": {
        "double_costs_r": 0.044418136860346465,
@@ -219,9 +219,9 @@
        "worst_leave_one_coin_out_r": 0.04903647058823529
       },
       "in_sample_expectancy_r": 0.21812382013927875,
-      "p_holm": 0.696,
+      "p_holm": 0.746,
       "grade": "bassa",
-      "why": "aspettativa +0.09R ma non distinguibile dal caso (p=0.39)"
+      "why": "aspettativa +0.09R ma non distinguibile dal caso (p=0.37)"
      }
     }
    },
@@ -244,63 +244,63 @@
     "sides": {
      "long": {
       "side": "long",
-      "n": 417,
-      "months": 45,
+      "n": 402,
+      "months": 44,
       "coins": 20,
-      "expectancy_r": 0.3592249400479616,
-      "expectancy_pct": 2.5358800959232615,
-      "win_rate": 0.40047961630695444,
-      "avg_win_pct": 22.194101796407185,
-      "avg_loss_pct": -10.595812,
-      "payoff": 2.0946107571941806,
-      "profit_factor": 1.3991999858057125,
+      "expectancy_r": 0.229139552238806,
+      "expectancy_pct": 1.099164179104477,
+      "win_rate": 0.38308457711442784,
+      "avg_win_pct": 19.956525974025972,
+      "avg_loss_pct": -10.610649193548387,
+      "payoff": 1.880801599412049,
+      "profit_factor": 1.1679171222155464,
       "worst_r": -1.1996,
       "ci95_r": [
-       -0.060155350379506665,
-       0.811116973279053
+       -0.1512020603381267,
+       0.6765824204016923
       ],
-      "p_vs_chance": 0.109,
-      "chance_mean_r": 0.198932198625484,
+      "p_vs_chance": 0.397,
+      "chance_mean_r": 0.196768953156812,
       "n_null": 999,
       "robust": {
-       "double_costs_r": 0.3131723043242341,
-       "without_top5_r": 0.17542985436893202,
-       "worst_leave_one_coin_out_r": 0.31480688775510207
+       "double_costs_r": 0.1830223638105818,
+       "without_top5_r": 0.05537229219143576,
+       "worst_leave_one_coin_out_r": 0.1779518518518518
       },
       "in_sample_expectancy_r": 0.7566587438044744,
-      "p_holm": 0.218,
+      "p_holm": 0.397,
       "grade": "bassa",
-      "why": "aspettativa +0.36R ma non distinguibile dal caso (p=0.11)"
+      "why": "aspettativa +0.23R ma non distinguibile dal caso (p=0.40)"
      },
      "short": {
       "side": "short",
-      "n": 271,
+      "n": 268,
       "months": 41,
       "coins": 20,
-      "expectancy_r": 0.08336789667896677,
-      "expectancy_pct": 1.7636309963099628,
-      "win_rate": 0.44280442804428044,
+      "expectancy_r": 0.09201492537313431,
+      "expectancy_pct": 1.8685820895522385,
+      "win_rate": 0.44776119402985076,
       "avg_win_pct": 17.175775,
-      "avg_loss_pct": -10.48443046357616,
-      "payoff": 1.6382172650837035,
-      "profit_factor": 1.3018945152983075,
+      "avg_loss_pct": -10.542655405405405,
+      "payoff": 1.6291697242796799,
+      "profit_factor": 1.3209484250916324,
       "worst_r": -1.1911,
       "ci95_r": [
-       -0.26790951703206034,
-       0.44579817555045653
+       -0.26128058075498933,
+       0.4555957970383274
       ],
-      "p_vs_chance": 0.14,
-      "chance_mean_r": -0.01097627775376853,
+      "p_vs_chance": 0.123,
+      "chance_mean_r": -0.03667849115588019,
       "n_null": 999,
       "robust": {
-       "double_costs_r": 0.04204293881905919,
-       "without_top5_r": 0.004580451127819612,
-       "worst_leave_one_coin_out_r": 0.06242360000000001
+       "double_costs_r": 0.050780146021743446,
+       "without_top5_r": 0.012493155893536143,
+       "worst_leave_one_coin_out_r": 0.07155141700404859
       },
       "in_sample_expectancy_r": 0.02036445508620077,
-      "p_holm": 0.218,
+      "p_holm": 0.246,
       "grade": "bassa",
-      "why": "aspettativa +0.08R ma non distinguibile dal caso (p=0.14)"
+      "why": "aspettativa +0.09R ma non distinguibile dal caso (p=0.12)"
      }
     }
    },
@@ -323,33 +323,33 @@
     "sides": {
      "long": {
       "side": "long",
-      "n": 103,
-      "months": 37,
+      "n": 98,
+      "months": 36,
       "coins": 18,
-      "expectancy_r": 0.9376728155339804,
-      "expectancy_pct": 4.884194174757282,
-      "win_rate": 0.33980582524271846,
-      "avg_win_pct": 34.879085714285715,
-      "avg_loss_pct": -10.55435294117647,
-      "payoff": 3.304710948049632,
-      "profit_factor": 1.7009541644373107,
+      "expectancy_r": 0.7848489795918365,
+      "expectancy_pct": 3.618316326530613,
+      "win_rate": 0.3163265306122449,
+      "avg_win_pct": 34.462387096774194,
+      "avg_loss_pct": -10.652820895522389,
+      "payoff": 3.2350480154284282,
+      "profit_factor": 1.4968132608698697,
       "worst_r": -1.1174,
       "ci95_r": [
-       -0.11517997452830184,
-       2.250507723453016
+       -0.27723218733783084,
+       2.1644613748079875
       ],
-      "p_vs_chance": 0.025,
-      "chance_mean_r": 0.2743505068174971,
+      "p_vs_chance": 0.044,
+      "chance_mean_r": 0.14966945792149755,
       "n_null": 999,
       "robust": {
-       "double_costs_r": 0.8877438650181529,
-       "without_top5_r": 0.08566020408163269,
-       "worst_leave_one_coin_out_r": 0.4950260869565217
+       "double_costs_r": 0.7354402187808114,
+       "without_top5_r": -0.05690752688172039,
+       "worst_leave_one_coin_out_r": 0.3266375000000001
       },
       "in_sample_expectancy_r": 0.621362852475122,
-      "p_holm": 0.05,
+      "p_holm": 0.066,
       "grade": "media",
-      "why": "103 operazioni, +0.94R, p=0.025 contro il caso, PF 1.70: indizio, non ancora confermato (IC o robustezza insufficienti)"
+      "why": "98 operazioni, +0.78R, p=0.044 contro il caso, PF 1.50: indizio, non ancora confermato (IC o robustezza insufficienti)"
      },
      "short": {
       "side": "short",
@@ -368,8 +368,8 @@
        -0.3608416666666667,
        2.020186428571428
       ],
-      "p_vs_chance": 0.034,
-      "chance_mean_r": 0.06325032532532532,
+      "p_vs_chance": 0.033,
+      "chance_mean_r": 0.04925262241553908,
       "n_null": 999,
       "robust": {
        "double_costs_r": 0.8719695975697147,
@@ -377,7 +377,7 @@
        "worst_leave_one_coin_out_r": 0.6752266666666666
       },
       "in_sample_expectancy_r": 0.14145033841079438,
-      "p_holm": 0.05,
+      "p_holm": 0.066,
       "grade": "non valutabile",
       "why": "16 operazioni su 10 mesi nel periodo fuori campione (servono almeno 30 operazioni e 6 mesi)"
      }
@@ -404,7 +404,7 @@
   "V2 V1 + regime (EMA200)|long": 1.0,
   "V2 V1 + regime (EMA200)|short": 1.0,
   "V3 V1 + 3 voti minimi|long": 1.0,
-  "V3 V1 + 3 voti minimi|short": 0.026000000000000002,
+  "V3 V1 + 3 voti minimi|short": 0.052000000000000005,
   "V4 V1 solo trend (senza ritorno alla media)|long": 1.0,
   "V4 V1 solo trend (senza ritorno alla media)|short": 1.0,
   "V5 V1 solo ritorno alla media (senza trend)|long": 1.0,
@@ -421,7 +421,7 @@
   "T3 T2 + regime (EMA200)|short": 1.0,
   "T4 tutti i voti + stop mobile, 30 gg|long": 1.0,
   "T4 tutti i voti + stop mobile, 30 gg|short": 1.0,
-  "T5 T2 + 3 voti minimi|long": 0.625,
-  "T5 T2 + 3 voti minimi|short": 0.8160000000000001
+  "T5 T2 + 3 voti minimi|long": 1.0,
+  "T5 T2 + 3 voti minimi|short": 0.8250000000000001
  }
 }

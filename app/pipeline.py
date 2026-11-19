@@ -681,10 +681,13 @@ def run_cycle(force=False):
                 if a.get("aha"):
                     validation.attach(a["aha"], val)
                     storage.kv_set(f"analysis:{iid}", a)
-            tracking.record(results)             # registro in avanti: la verifica fuori campione vera
-            tracking.evaluate(lambda c: storage.load_bars(c, "1d").iloc[:-1])
         except Exception:
             log.error("validazione: %s", traceback.format_exc())
+        try:                                     # registro in avanti: indipendente dalla validazione
+            tracking.record(results)
+            tracking.evaluate(lambda c: storage.load_bars(c, "1d").iloc[:-1])
+        except Exception:
+            log.error("registro in avanti: %s", traceback.format_exc())
         resolve_predictions()
         STATE["last_run"] = storage.utcnow()
         storage.kv_set("last_run", STATE["last_run"])   # sopravvive al riavvio del server

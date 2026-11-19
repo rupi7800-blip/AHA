@@ -35,7 +35,7 @@ class Order:
     qty: float
     entry: float
     stop_loss: float
-    take_profit: float
+    take_profit: float | None
     horizon_days: int
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     created: float = field(default_factory=time.time)
@@ -123,9 +123,9 @@ def plan_order(signal: dict, symbol: str, cfg: ExecutionConfig, open_positions: 
         chk("età del segnale", age <= cfg.max_signal_age_days, f"{age} giorni (massimo {cfg.max_signal_age_days})")
     ok_levels = False
     if side in ("long", "short"):
-        e, s, t = signal["entry"], signal["stop_loss"], signal["take_profit"]
+        e, s, t = signal["entry"], signal["stop_loss"], signal.get("take_profit")
         d = 1 if side == "long" else -1
-        ok_levels = (e - s) * d > 0 and (t - e) * d > 0
+        ok_levels = (e - s) * d > 0 and (t is None or (t - e) * d > 0)       # con lo stop mobile il target può mancare
     chk("livelli coerenti", ok_levels, "stop e target dalla parte giusta dell'ingresso" if ok_levels else "livelli non validi")
     if not all(c["ok"] for c in checks):
         return {"ok": False, "order": None, "checks": checks}
@@ -138,6 +138,6 @@ def plan_order(signal: dict, symbol: str, cfg: ExecutionConfig, open_positions: 
         qty = cap / signal["entry"]
     chk("dimensione", True, f"rischio {risk_usd:,.0f} USD" + (f", ridotta al tetto del {cfg.max_notional_pct:g}% del capitale" if capped else ""))
     order = Order(symbol=symbol, side="buy" if side == "long" else "sell", qty=qty, entry=signal["entry"],
-                  stop_loss=signal["stop_loss"], take_profit=signal["take_profit"], horizon_days=signal["horizon_days"],
+                  stop_loss=signal["stop_loss"], take_profit=signal.get("take_profit"), horizon_days=signal["horizon_days"],
                   meta={"reliability": rel.get("grade"), "asof": signal.get("asof"), "source": "AHA"})
     return {"ok": True, "order": order, "checks": checks}

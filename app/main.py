@@ -193,6 +193,8 @@ def asset(iid: str):
     a["centrality"] = ((g.get("network") or {}).get("centrality") or {}).get(a["meta"]["name"])
     a["spillover"] = (g.get("spillover") or {}).get(a["meta"]["name"])
     a["prediction_log"] = storage.predictions(iid)[:60]
+    if isinstance(a.get("aha"), dict):
+        a["aha"] = {k: v for k, v in a["aha"].items() if not k.startswith("_")}
     return a
 
 
@@ -356,7 +358,14 @@ def _aha_inputs(iid: str):
     return df, {k: v for k, v in oc.items() if len(v)}, storage.load_series("fear_greed:global")
 
 
+_POSITIVE = {"ema_fast", "ema_slow", "rsi_n", "macd_f", "macd_s", "macd_sig", "bb_n", "bb_k", "horizon", "atr_stop", "atr_tp", "min_votes", "min_rr",
+             "near_atr", "flow_z", "min_strength"}
+_FLAGS = {"exit_sr", "trail", "regime", "near_level"}
+_NONNEG = {"stop_buf", "tp_buf", "cost_bps", "slippage_bps", "stop_slip_bps", "w_trend", "w_mr", "w_chain"}
+
+
 def _overrides(request: Request, skip=("days",)) -> dict:
+    import math
     over = {}
     for k, v in request.query_params.items():
         if k in skip:
@@ -364,9 +373,18 @@ def _overrides(request: Request, skip=("days",)) -> dict:
         if k not in signals.DEFAULTS:
             raise HTTPException(400, f"parametro sconosciuto: {k}")
         try:
-            over[k] = int(float(v)) if _PARAM_TYPES[k] is int else float(v)
+            x = float(v)
         except ValueError:
             raise HTTPException(400, f"valore non numerico per {k}")
+        if not math.isfinite(x):
+            raise HTTPException(400, f"{k}: valore non finito")
+        if (k in _POSITIVE and x <= 0) or (k in _NONNEG and x < 0) or (k in _FLAGS and x not in (0, 1)):
+            raise HTTPException(400, f"{k}: valore fuori intervallo")
+        if k == "horizon" and not (1 <= x <= 250):
+            raise HTTPException(400, "horizon: tra 1 e 250 giorni")
+        if k in ("ema_fast", "ema_slow", "rsi_n", "macd_f", "macd_s", "macd_sig", "bb_n") and x > 500:
+            raise HTTPException(400, f"{k}: massimo 500")
+        over[k] = int(x) if _PARAM_TYPES[k] is int else x
     return over
 
 
@@ -514,7 +532,7 @@ def _plan(iid: str):
     if not inst or not a or not a.get("aha"):
         raise HTTPException(404, "analisi non disponibile")
     return inst, execution.plan_order(a["aha"], inst["symbol"], _exec_cfg(), open_positions=len(_PAPER.positions()),
-                                      now_asof=str(__import__("datetime").date.today()))
+                                      now_asof=str(__import__("pandas").Timestamp.now("UTC").date()))
 
 
 @app.get("/api/aha/execution/preview/{iid}")

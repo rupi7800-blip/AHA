@@ -324,12 +324,14 @@ def build_signal(df: pd.DataFrame, onchain: dict[str, pd.Series] | None = None, 
     trades, skipped = simulate(trader, score, params["min_votes"])
     split = int(n_pre * TRAIN_FRAC)
     d_split, d_hold = str(df.index[split])[:10], str(df.index[n_pre])[:10]
+    def _ends_before(t, limit):               # scarto di sicurezza: un trade che finisce nel periodo riservato non entra nel fuori campione
+        return t["e"] + t["bars"] - 1 < limit
     seg = {"in_sample": [t for t in trades if t["date"] < d_split],
-           "out_of_sample": [t for t in trades if d_split <= t["date"] < d_hold],
+           "out_of_sample": [t for t in trades if d_split <= t["date"] < d_hold and _ends_before(t, n_pre)],
            "holdout": [t for t in trades if t["date"] >= d_hold]}
     hist = {k: by_side(v) for k, v in seg.items()}
     hist.update(split_date=d_split, holdout_start=d_hold, skipped=skipped,
-                random_out_of_sample=random_timing(trader, split, n_pre - int(params["horizon"]) - 2),
+                random_out_of_sample=random_timing(trader, split, n_pre - int(params["horizon"])),
                 recent_trades=[{k: t[k] for k in ("date", "side", "net", "r", "exit", "bars")} for t in trades[-60:]])
 
     last = float(df["close"].iloc[-1]); a = float(atr.iloc[-1]); sc = float(score.iloc[-1]); t_last = n - 1
@@ -352,7 +354,7 @@ def build_signal(df: pd.DataFrame, onchain: dict[str, pd.Series] | None = None, 
             plan = plan_exit(direction, last, a, trader.finder.important(t_last), params, need_tp=not params["trail"])
         else:
             plan = {"ok": True, "stop": last - direction * params["atr_stop"] * a, "tp": last + direction * params["atr_tp"] * a,
-                    "basis_stop": "ATR", "basis_tp": "ATR", "rr": params["atr_tp"] / params["atr_stop"],
+                    "basis_stop": "ATR", "basis_tp": "ATR", "rr": params["atr_tp"] / max(params["atr_stop"], 1e-9),
                     "risk_pct": params["atr_stop"] * a / last * 100}
     if direction and plan and plan["ok"]:
         d = direction
@@ -377,9 +379,9 @@ def build_signal(df: pd.DataFrame, onchain: dict[str, pd.Series] | None = None, 
         if direction:
             out["skipped_reason"] = (plan or {}).get("why") or "filtri d'ingresso non soddisfatti (regime o distanza dai livelli)"
     out["_trades"] = [[t["date"], t["side"], round(t["gross"], 5), round(t["cost"], 5), round(t["r"], 4), round(t["risk_pct"], 3)]
-                      for t in trades if t["date"] >= d_split]
+                      for t in seg["out_of_sample"]]
     # esiti per barra (serve al test del caso sul pool di monete): solo periodo fuori campione e riservato
-    lo, hi = split, n - int(params["horizon"]) - 2
+    lo, hi = split, n_pre - int(params["horizon"])        # solo ingressi il cui trade si chiude prima del periodo riservato
     out["_outcomes"] = {"dates": [str(x)[:10] for x in df.index[lo:hi]],
                         "long": [_o(trader.outcome(i, 1)) for i in range(lo, hi)],
                         "short": [_o(trader.outcome(i, -1)) for i in range(lo, hi)]}
