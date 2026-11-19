@@ -341,7 +341,7 @@ def build_signal(df: pd.DataFrame, onchain: dict[str, pd.Series] | None = None, 
     hist = {k: by_side(v) for k, v in seg.items()}
     hist.update(split_date=d_split, holdout_start=d_hold, skipped=skipped,
                 random_out_of_sample=random_timing(trader, split, n_pre - hz),
-                recent_trades=[{k: t[k] for k in ("date", "side", "net", "r", "exit", "bars")} for t in trades[-60:]])
+                recent_trades=[{k: t[k] for k in ("date", "side", "net", "r", "exit", "bars")} for t in trades if t["e"] + t["bars"] <= n_pre][-60:])
 
     last = float(df["close"].iloc[-1]); a = float(atr.iloc[-1]); sc = float(score.iloc[-1]); t_last = n - 1
     direction = int(np.sign(sc)) if abs(sc) >= params["min_votes"] else 0

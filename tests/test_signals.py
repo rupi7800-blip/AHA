@@ -143,6 +143,7 @@ def test_holdout_never_influences_tuning_or_oos():
     assert r1["history"]["in_sample"] == r2["history"]["in_sample"]
     assert r1["_trades"] == r2["_trades"] and r1["_outcomes"] == r2["_outcomes"]
     assert all(x[0] < hold for x in r1["_trades"])
+    assert all(x["date"] < hold for x in r1["history"]["recent_trades"]) and r1["history"]["recent_trades"] == r2["history"]["recent_trades"]
 
 
 def test_oos_trades_are_selected_by_entry_bar_symmetrically_with_chance():

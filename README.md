@@ -44,7 +44,7 @@ recenza e ampiezza della reazione; stop oltre la zona con margine, target prima 
 ## Risultati della ricerca (cartella `research/`)
 
 Pool di 20 monete, scelta sul periodo in campione, verifica fuori campione, costi realistici:
-- Indicatori classici (8 varianti, giro 1) con uscite ATR fisse o da livelli: aspettativa tra -0,05R e +0,05R sui long e tra -0,01R
+- Indicatori classici (8 varianti, giro 1) con uscite ATR fisse o da livelli: aspettativa tra -0,05R e -0,01R sui long e tra +0,02R
   e +0,05R sugli short, nessuna distinguibile dal caso. Fanno eccezione V5 short (solo ritorno alla media: -0,24R, in perdita) e
   V3 short (+1,27R ma 9 operazioni fuori campione: rumore).
 - Supporti e resistenze come livelli di rimbalzo (`level_quality_*.md`): le zone importanti rimbalzano come punti qualunque, anche
