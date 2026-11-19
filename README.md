@@ -15,23 +15,46 @@ specializzata sulle criptovalute. Web app leggera (FastAPI + JS vanilla, install
     DefiLlama (TVL), Alternative.me (Fear & Greed) e Glassnode (con chiave `GLASSNODE_API_KEY`: SOPR, NVT).
 - Velocità: walk-forward con finestra mobile; ciclo di 3 monete in circa 30 s (GFIP: oltre 15 minuti per una).
 
-## Segnali (passo 2)
+## Segnali e metodo di valutazione
 
-`app/signals.py` combina EMA, RSI, MACD, Bollinger, MVRV, flussi exchange e Fear & Greed:
-- i parametri di ogni indicatore sono scelti su una griglia usando solo il primo 60% della storia;
-- il segnale (long/short, entry, stop loss e take profit a multipli di ATR, orizzonte) è provato sull'intera storia
-  con gli stessi stop/target e con i costi; **l'affidabilità si basa solo sul 40% finale (fuori campione)**,
-  confrontato con l'ingresso casuale nella stessa direzione;
-- le metriche on-chain mancanti per una moneta non votano e sono dichiarate (`onchain_missing`).
+`app/signals.py` combina EMA, MACD, (RSI e Bollinger con peso 0 di default), MVRV, flussi exchange, SOPR, NVT e Fear & Greed.
+La strategia predefinita è **trend-following con stop mobile**: voti di trend + on-chain, solo nel verso dell'EMA200, stop iniziale
+oltre il supporto/resistenza importante più vicino, poi stop che segue gli ultimi minimi/massimi confermati, uscita a 60 giorni.
+Il take profit mostrato è solo il prossimo livello importante (presa parziale), non fa parte della strategia.
 
-API: `GET /api/aha/signals` (elenco) e `GET /api/aha/signal/{id}?ema_fast=12&horizon=21&atr_stop=1.5...`
-(ricalcolo con parametri modificati: base per i grafici interattivi).
+**Come si valuta** (`app/validation.py`):
+- il successo non si misura con la % di operazioni in positivo ma con l'**aspettativa netta per operazione** (in % e in multipli
+  di rischio R), il rapporto guadagno medio / perdita media, il profit factor;
+- il **"caso"** è entrare in momenti casuali con le stesse regole di uscita: il calendario dei trade viene spostato di un numero
+  casuale di giorni, uguale per tutte le monete (si conservano numero di trade, quota long/short e correlazione tra monete);
+- **long e short** sono valutati separatamente;
+- l'affidabilità (alta/media/bassa/non valutabile) è del **pool di monete**, non della singola: bootstrap a blocchi di mese,
+  correzione di Holm, costi doppi, senza i 5 trade migliori, senza una moneta alla volta;
+- simulazione prudente: ingresso all'apertura della barra dopo il segnale, gap oltre lo stop = uscita all'apertura, stop prima del
+  target nella stessa barra, 20 bps per lato + 10 bps extra sugli stop. Il funding dei perpetual non è modellato;
+- le ultime 10 settimane sono riservate; con un orizzonte di 60 giorni contengono troppe poche operazioni per validare
+  (1 su 20 monete), quindi la prova fuori campione vera è il **registro in avanti** (`/api/aha/track`).
+
+**Uscite da supporti e resistenze** (`app/levels.py`): pivot confermati con ritardo, zone raggruppate in ATR, forza da tocchi,
+recenza e ampiezza della reazione; stop oltre la zona con margine, target prima della resistenza con R/R minimo 1,5.
+
+## Risultati della ricerca (cartella `research/`)
+
+Pool di 20 monete, scelta sul periodo in campione, verifica fuori campione, costi realistici:
+- Indicatori classici con uscite ATR fisse o da livelli: aspettativa ~0R, nessuna variante distinguibile dal caso.
+- Supporti e resistenze come livelli di rimbalzo (`level_quality_*.md`): le zone importanti rimbalzano come punti qualunque, anche
+  con molti tocchi. Servono come criterio logico di invalidazione, non come previsione.
+- Trend-following con stop mobile: long +0,4/+0,5R fuori campione, ma il caso con le stesse uscite dà +0,2/+0,35R (deriva
+  rialzista e bias di sopravvivenza delle 20 monete attuali); il contributo del tempismo è piccolo e non significativo dopo la
+  correzione per i confronti multipli. Short: +0,09/+0,15R contro ~0R del caso. Affidabilità: **bassa**.
+- Limiti: le 20 monete sono i sopravvissuti; le soglie on-chain (MVRV 1 e 3,5) vengono da letteratura costruita sull'intera storia di BTC;
+  il periodo fuori campione è stato visto nel primo giro del laboratorio (il secondo è esplorativo).
 
 ## Interfaccia (passo 3)
 
 `/` è la nuova interfaccia AHA, pensata per smartphone (installabile come PWA): scheda del segnale con ingresso, stop loss,
-take profit, orizzonte, affidabilità e percentuale storica fuori campione; grafici Plotly (candele, EMA, Bollinger, RSI,
-MACD, MVRV, netflow exchange, SOPR, NVT, Fear & Greed) con i parametri **modificabili**: cambiando un valore, segnale,
+take profit, orizzonte, affidabilità e percentuale storica fuori campione; grafici Plotly (candele, EMA, Bollinger, supporti/resistenze, RSI,
+MACD, MVRV, netflow exchange, SOPR, NVT, Fear & Greed) e registro in avanti, con i parametri **modificabili**: cambiando un valore, segnale,
 grafici e percentuali si ricalcolano (`GET /api/aha/chart/{id}?...`). `/classic` è la vecchia interfaccia GFIP.
 
 ## Aggiornamento dei dati

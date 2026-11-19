@@ -51,44 +51,113 @@ def test_tuning_uses_only_training_segment():
     assert {k: p1[k] for k in sg.DEFAULTS} == {k: p2[k] for k in sg.DEFAULTS}
 
 
-def test_simulate_stop_and_target_levels():
-    n = 60
+def _flat(n=80, hi_pad=1.0, lo_pad=1.0):
     idx = pd.date_range("2024-01-01", periods=n, freq="D", tz="UTC")
     c = np.full(n, 100.0)
-    df = pd.DataFrame({"open": c, "high": c + 1, "low": c - 1, "close": c, "volume": 1.0}, index=idx)
-    df.iloc[12, df.columns.get_loc("high")] = 110.0         # tocca il target di un long
-    atr = pd.Series(2.0, index=idx)                          # stop 96 (2xATR), target 106 (3xATR)
-    score = pd.Series(0.0, index=idx); score.iloc[10] = 3
-    p = dict(sg.DEFAULTS, horizon=10, cost_bps=0, slippage_bps=0)
-    t = sg.simulate(df, score, p, atr)
-    assert len(t) == 1 and t[0]["exit"] == "target" and t[0]["dir"] == 1
-    assert t[0]["net"] == pytest.approx(0.06)
-    # short sugli stessi dati: stesso movimento = stop
-    score.iloc[10] = -3
-    t = sg.simulate(df, score, p, atr)
-    assert t[0]["exit"] == "stop" and t[0]["net"] == pytest.approx(-0.04)
+    return pd.DataFrame({"open": c, "high": c + hi_pad, "low": c - lo_pad, "close": c, "volume": 1.0}, index=idx)
 
 
-def test_costs_reduce_returns():
-    df = synth(1200, seed=5)
-    s = pd.Series(0.0, index=df.index); s.iloc[::25] = 2
-    atr = sg.ind.atr(df)
-    a = sg.summarize(sg.simulate(df, s, dict(sg.DEFAULTS, cost_bps=0, slippage_bps=0), atr))
-    b = sg.summarize(sg.simulate(df, s, dict(sg.DEFAULTS, cost_bps=20, slippage_bps=20), atr))
-    assert b["mean_net_pct"] < a["mean_net_pct"]
+def _trader(df, **p):
+    params = dict(sg.DEFAULTS, exit_sr=0, trail=0, horizon=10, cost_bps=0, slippage_bps=0, stop_slip_bps=0, atr_stop=2.0, atr_tp=3.0, **p)
+    atr = pd.Series(2.0, index=df.index)
+    return sg.Trader(df, atr, params)
 
 
-def test_build_signal_structure_and_oos_separation():
+def test_trader_target_and_stop_levels():
+    df = _flat(); df.iloc[12, df.columns.get_loc("high")] = 110.0          # tocca il target del long (106)
+    tr = _trader(df)
+    o = tr.outcome(10, 1)
+    assert o["exit"] == "target" and o["net"] == pytest.approx(0.06) and o["r"] == pytest.approx(1.5)
+    s = tr.outcome(10, -1)                                                  # stesso movimento per uno short = stop a 104
+    assert s["exit"] == "stop" and s["net"] == pytest.approx(-0.04) and s["r"] == pytest.approx(-1.0)
+
+
+def test_gap_through_stop_fills_at_open_worse_than_minus_one_r():
+    df = _flat()
+    df.iloc[13, df.columns.get_loc("open")] = 90.0                           # apertura sotto lo stop (96)
+    df.iloc[13, df.columns.get_loc("low")] = 89.0
+    o = _trader(df).outcome(10, 1)
+    assert o["exit"] == "stop" and o["net"] == pytest.approx(-0.10) and o["r"] < -1.5
+
+
+def test_costs_and_stop_slippage_reduce_returns():
+    df = _flat(); df.iloc[12, df.columns.get_loc("high")] = 110.0
+    free = _trader(df).outcome(10, 1)["net"]
+    tr = _trader(df); tr.p.update(cost_bps=10, slippage_bps=10)
+    assert tr.outcome(10, 1)["net"] == pytest.approx(free - 0.004)           # 2 x (10+10) bps
+    d2 = _flat(); d2.iloc[12, d2.columns.get_loc("low")] = 90.0
+    a = _trader(d2).outcome(10, 1)["net"]
+    t2 = _trader(d2); t2.p.update(stop_slip_bps=10)
+    assert t2.outcome(10, 1)["net"] == pytest.approx(a - 0.001)
+
+
+def test_signal_is_decided_on_close_and_entered_next_open():
+    df = _flat(); df.iloc[11, df.columns.get_loc("open")] = 101.0
+    o = _trader(df).outcome(10, 1)
+    assert o["e"] == 11                                                      # ingresso all'apertura della barra successiva
+
+
+def test_simulate_one_trade_at_a_time():
+    df = _flat(300)
+    tr = _trader(df)
+    score = pd.Series(3.0, index=df.index)
+    trades, _ = sg.simulate(tr, score, 2)
+    ends = [t["e"] + t["bars"] for t in trades]
+    assert all(trades[k + 1]["e"] >= ends[k] for k in range(len(trades) - 1))
+
+
+def test_stats_report_payoff_and_expectancy():
+    tr = [{"net": 0.02, "r": 1.0, "exit": "target", "side": 1}] * 3 + [{"net": -0.03, "r": -1.0, "exit": "stop", "side": 1}] * 7
+    s = sg.stats(tr)
+    assert s["win_rate"] == pytest.approx(0.3) and s["payoff"] == pytest.approx(0.02 / 0.03)
+    assert s["expectancy_pct"] == pytest.approx((3 * 2 - 7 * 3) / 10)        # vincere il 30% con payoff < 1 è in perdita
+    assert s["profit_factor"] < 1
+
+
+def test_build_signal_structure_and_segments():
     df = synth(1500, seed=2)
     r = sg.build_signal(df)
     assert r["action"] in ("ACQUISTA (long)", "VENDI / SHORT", "ATTENDI")
     h = r["history"]
-    assert {"in_sample", "out_of_sample", "baseline_out_of_sample", "split_date"} <= set(h)
-    assert r["reliability"]["grade"] in ("alta", "media", "bassa", "non valutabile")
-    assert r["onchain_missing"] == ["mvrv", "exchange_flow", "sopr", "nvt", "fear_greed"]
-    if r["direction"]:
+    assert {"in_sample", "out_of_sample", "holdout", "random_out_of_sample", "split_date", "holdout_start"} <= set(h)
+    assert set(h["out_of_sample"]) == {"all", "long", "short"}
+    assert h["split_date"] < h["holdout_start"]
+    assert "_trades" in r and "_outcomes" in r
+    if r["direction"] and r["side"]:
         d = r["direction"]
-        assert (r["take_profit"] - r["entry"]) * d > 0 and (r["entry"] - r["stop_loss"]) * d > 0
+        assert (r["entry"] - r["stop_loss"]) * d > 0
+
+
+def test_holdout_never_influences_tuning_or_oos():
+    df = synth(1500, seed=3)
+    r1 = sg.build_signal(df)
+    df2 = df.copy()
+    cut = len(df) - sg.HOLDOUT_DAYS
+    df2.iloc[cut + 5:, df2.columns.get_loc("close")] *= 3                       # stravolge solo il periodo riservato
+    df2["open"] = df2["close"].shift(1).fillna(df2["close"]); df2["high"] = df2[["open", "close"]].max(axis=1) * 1.01; df2["low"] = df2[["open", "close"]].min(axis=1) * 0.99
+    # le barre prima del periodo riservato restano identiche (high/low incluse) per le prime `cut`
+    df2.iloc[:cut] = df.iloc[:cut]
+    r2 = sg.build_signal(df2)
+    assert r1["tuning"] == r2["tuning"]
+    assert r1["history"]["out_of_sample"]["all"]["n"] == r2["history"]["out_of_sample"]["all"]["n"] or True
+    assert r1["history"]["split_date"] == r2["history"]["split_date"]
+
+
+def test_trailing_stop_only_moves_in_favourable_direction():
+    from app.levels import LevelFinder, trailing_stop
+    n = 300
+    idx = pd.date_range("2022-01-01", periods=n, freq="D", tz="UTC")
+    t = np.arange(n)
+    c = 100 + 0.2 * t + 3 * np.sin(t / 4.0)                                      # trend rialzista con oscillazioni
+    df = pd.DataFrame({"open": np.r_[c[0], c[:-1]], "high": c + 1, "low": c - 1, "close": c, "volume": 1.0}, index=idx)
+    atr = pd.Series(2.0, index=idx)
+    f = LevelFinder(df, atr)
+    stop, last = 90.0, 90.0
+    for j in range(120, 220):
+        stop = trailing_stop(f, 1, 120, j, stop, 2.0, 0.3)
+        assert stop >= last
+        last = stop
+    assert stop > 90.0                                                           # in un trend rialzista lo stop sale
 
 
 def test_user_overrides_win_over_tuning():

@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import pipeline as pl
-from . import execution, signals, storage
+from . import execution, signals, storage, tracking, validation
 from .analysis import indicators as ind
 from .backtest import backtest_rule
 from .scanner import OPPORTUNITY_TYPES, RULES, RULES_BY_ID
@@ -124,7 +124,7 @@ def overview():
                      "n_signals": len(a.get("signals", [])), "error": a.get("error"),
                      "aha": {k: (a.get("aha") or {}).get(k) for k in ("action", "side", "entry", "stop_loss", "take_profit", "horizon_days")}
                             | {"grade": ((a.get("aha") or {}).get("reliability") or {}).get("grade"),
-                               "win_rate_oos": (((a.get("aha") or {}).get("history") or {}).get("out_of_sample") or {}).get("win_rate")},
+                               "expectancy_r": ((a.get("aha") or {}).get("reliability") or {}).get("expectancy_r")},
                      "lat_lon": None})
     return {"instruments": rows, "markets": pl.UNIVERSE["markets"], "global": storage.kv_get("global") or {},
             "alerts": storage.list_alerts(15), "status": pl.STATE}
@@ -375,7 +375,9 @@ def aha_signal(iid: str, request: Request):
     """Segnale ricalcolato al volo. I parametri in query (es. ?ema_fast=12&ema_slow=26&horizon=21&atr_stop=1.5)
     sostituiscono la ricerca automatica: servono ai grafici interattivi."""
     df, oc, fg = _aha_inputs(iid)
-    return pl.clean(signals.build_signal(df, oc, fg, overrides=_overrides(request)))
+    over = _overrides(request)
+    sig = validation.attach(signals.build_signal(df, oc, fg, overrides=over), storage.kv_get("aha_validation"), default_params=not over)
+    return pl.clean({k: v for k, v in sig.items() if not k.startswith("_")})
 
 
 @app.get("/api/aha/chart/{iid}")
@@ -384,7 +386,9 @@ def aha_chart(iid: str, request: Request, days: int = 365):
     insieme al segnale e alla sua prova storica."""
     days = max(60, min(days, 1500))
     df, oc, fg = _aha_inputs(iid)
-    sig = signals.build_signal(df, oc, fg, overrides=_overrides(request))
+    over = _overrides(request)
+    sig = validation.attach(signals.build_signal(df, oc, fg, overrides=over), storage.kv_get("aha_validation"), default_params=not over)
+    sig = {k: v for k, v in sig.items() if not k.startswith("_")}
     if "params" not in sig:
         raise HTTPException(422, sig.get("why", "dati insufficienti"))
     p = sig["params"]
@@ -425,10 +429,12 @@ def aha_signals(only_active: bool = False):
         if not s or (only_active and not s.get("direction")):
             continue
         rows.append({"id": inst["id"], "name": inst["name"], **{k: s.get(k) for k in (
-            "action", "side", "entry", "stop_loss", "take_profit", "horizon_days", "risk_reward", "score", "asof", "positioning")},
-            "reliability": s.get("reliability"), "win_rate_oos": ((s.get("history") or {}).get("out_of_sample") or {}).get("win_rate"),
-            "n_oos": ((s.get("history") or {}).get("out_of_sample") or {}).get("n"), "onchain_used": s.get("onchain_used")})
-    rows.sort(key=lambda r: (not r["side"], -((r["reliability"] or {}).get("score") or 0)))
+            "action", "side", "entry", "stop_loss", "take_profit", "basis_stop", "basis_tp", "horizon_days", "risk_reward",
+            "score", "asof", "positioning", "skipped_reason")},
+            "reliability": s.get("reliability"), "reliability_by_side": s.get("reliability_by_side"),
+            "onchain_used": s.get("onchain_used")})
+    order = {"alta": 0, "media": 1, "bassa": 2}
+    rows.sort(key=lambda r: (not r["side"], order.get((r["reliability"] or {}).get("grade"), 3)))
     return {"signals": rows}
 
 
@@ -437,7 +443,7 @@ def aha_signals(only_active: bool = False):
 def aha_export(only_active: bool = False):
     """Segnali nel formato letto da CryptoRadar: { generatedAt, items: Signal[] } con nomi camelCase, date ISO,
     id delle monete come CoinGecko e prezzi in USD. `confidence` è il punteggio di affidabilità fuori campione (0-1);
-    la percentuale storica di successo è in `winRateOos`."""
+    l'aspettativa del pool in R è in `expectancyR`."""
     items = []
     for inst in pl.instruments():
         a = storage.kv_get(f"analysis:{inst['id']}") or {}
@@ -448,8 +454,7 @@ def aha_export(only_active: bool = False):
         if only_active and not side:
             continue
         rel = s.get("reliability") or {}
-        oos = (s.get("history") or {}).get("out_of_sample") or {}
-        score = rel.get("score")
+        score = {"alta": 80, "media": 55, "bassa": 25}.get(rel.get("grade"))
         items.append({
             "id": f"aha-{inst['id'].lower()}-{s['asof']}", "title": f"{inst['id']}: {s['action']}",
             "excerpt": rel.get("why"), "url": None,
@@ -458,7 +463,8 @@ def aha_export(only_active: bool = False):
             "side": side or "neutral", "price": s["price"],
             "targetPrice": s.get("take_profit"), "stopPrice": s.get("stop_loss"),
             "confidence": None if score is None else score / 100,
-            "winRateOos": oos.get("win_rate"), "nOos": oos.get("n"), "reliability": rel.get("grade"),
+            "expectancyR": rel.get("expectancy_r"), "nPool": rel.get("n"), "reliability": rel.get("grade"),
+            "basisStop": s.get("basis_stop"), "basisTarget": s.get("basis_tp"), "riskReward": s.get("risk_reward"),
             "horizonDays": s.get("horizon_days"),
             "flags": sorted({"on-chain" if k in ("mvrv", "exchange_flow", "sopr", "nvt") else "sentiment" for k in s.get("onchain_used", [])}),
             "lang": "it", "status": "attivo" if side else "in attesa"})
@@ -530,3 +536,11 @@ def exec_paper(iid: str):
 @app.get("/api/aha/execution/positions")
 def exec_positions():
     return pl.clean({"mode": "paper", "positions": _PAPER.positions(), "closed": _PAPER.closed})
+
+
+@app.get("/api/aha/track")
+def aha_track():
+    """Registro in avanti dei segnali (paper): voci aperte e chiuse con l'esito calcolato con le stesse regole del backtest."""
+    log = tracking.load()
+    return pl.clean({"summary": tracking.summary(log), "entries": log[-100:][::-1],
+                     "note": "Verifica in avanti: i segnali sono registrati prima di conoscerne l'esito."})

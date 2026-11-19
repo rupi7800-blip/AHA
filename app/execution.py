@@ -114,8 +114,8 @@ def plan_order(signal: dict, symbol: str, cfg: ExecutionConfig, open_positions: 
     chk("segnale attivo", side in ("long", "short"), "direzione: " + str(side))
     rel = signal.get("reliability") or {}
     chk("affidabilità", rel.get("grade") in cfg.allowed_grades, f"{rel.get('grade')} (richiesta: {', '.join(cfg.allowed_grades)})")
-    n_oos = ((signal.get("history") or {}).get("out_of_sample") or {}).get("n", 0)
-    chk("operazioni fuori campione", n_oos >= cfg.min_oos_trades, f"{n_oos} (minimo {cfg.min_oos_trades})")
+    n_oos = rel.get("n", 0)
+    chk("operazioni del pool fuori campione", n_oos >= cfg.min_oos_trades, f"{n_oos} (minimo {cfg.min_oos_trades})")
     chk("posizioni aperte", open_positions < cfg.max_open, f"{open_positions} su {cfg.max_open}")
     if now_asof and signal.get("asof"):
         import pandas as pd

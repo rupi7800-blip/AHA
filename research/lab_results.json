@@ -1,0 +1,675 @@
+{
+ "results": {
+  "V0 uscite ATR fisse (2/3)": {
+   "validation": {
+    "n_coins": 20,
+    "window": "oos",
+    "sides": {
+     "long": {
+      "side": "long",
+      "n": 699,
+      "months": 45,
+      "coins": 20,
+      "expectancy_r": -0.04428612303290414,
+      "expectancy_pct": -0.9424749642346212,
+      "win_rate": 0.43061516452074394,
+      "avg_win_pct": 10.70072757475083,
+      "avg_loss_pct": -9.748012562814072,
+      "payoff": 1.097734282326543,
+      "profit_factor": 0.830196027588667,
+      "worst_r": -1.1814,
+      "ci95_r": [
+       -0.19507687775769533,
+       0.11040405685183012
+      ],
+      "p_vs_chance": 0.588,
+      "chance_mean_r": -0.03461224028033756,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.09007634406909472,
+       "without_top5_r": -0.05529106628242069,
+       "worst_leave_one_coin_out_r": -0.0664972049689441
+      },
+      "in_sample_expectancy_r": 0.18501042049331523,
+      "p_holm": 0.588,
+      "grade": "bassa",
+      "why": "aspettativa netta -0.04R: in perdita dopo i costi"
+     },
+     "short": {
+      "side": "short",
+      "n": 416,
+      "months": 44,
+      "coins": 20,
+      "expectancy_r": 0.008750480769230776,
+      "expectancy_pct": 0.35381490384615366,
+      "win_rate": 0.4735576923076923,
+      "avg_win_pct": 10.927761421319797,
+      "avg_loss_pct": -9.157908675799089,
+      "payoff": 1.1932594884023866,
+      "profit_factor": 1.0733886722158454,
+      "worst_r": -1.1711,
+      "ci95_r": [
+       -0.17155442603610166,
+       0.19011141988756822
+      ],
+      "p_vs_chance": 0.244,
+      "chance_mean_r": -0.03389734855047355,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.0311482914394765,
+       "without_top5_r": -0.009187104622871064,
+       "worst_leave_one_coin_out_r": -0.007679441624365486
+      },
+      "in_sample_expectancy_r": 0.03497677855110943,
+      "p_holm": 0.488,
+      "grade": "bassa",
+      "why": "aspettativa +0.01R ma non distinguibile dal caso (p=0.24)"
+     }
+    }
+   },
+   "in_sample": {
+    "long": {
+     "n": 998,
+     "expectancy_r": 0.18501042049331523
+    },
+    "short": {
+     "n": 569,
+     "expectancy_r": 0.03497677855110943
+    }
+   },
+   "skipped": {}
+  },
+  "V1 uscite da supporti/resistenze": {
+   "validation": {
+    "n_coins": 20,
+    "window": "oos",
+    "sides": {
+     "long": {
+      "side": "long",
+      "n": 578,
+      "months": 45,
+      "coins": 20,
+      "expectancy_r": -0.001836505190311432,
+      "expectancy_pct": -0.5944186851211075,
+      "win_rate": 0.43252595155709345,
+      "avg_win_pct": 11.23488,
+      "avg_loss_pct": -9.61065243902439,
+      "payoff": 1.1690028404710984,
+      "profit_factor": 0.8910082625541907,
+      "worst_r": -1.2349,
+      "ci95_r": [
+       -0.16897260115813556,
+       0.16197781061926322
+      ],
+      "p_vs_chance": 0.429,
+      "chance_mean_r": -0.011793345409237196,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.05045881276852269,
+       "without_top5_r": -0.032582198952879636,
+       "worst_leave_one_coin_out_r": -0.023871402214022144
+      },
+      "in_sample_expectancy_r": 0.17599208388552884,
+      "p_holm": 0.429,
+      "grade": "bassa",
+      "why": "aspettativa netta -0.00R: in perdita dopo i costi"
+     },
+     "short": {
+      "side": "short",
+      "n": 305,
+      "months": 42,
+      "coins": 20,
+      "expectancy_r": 0.03716196721311477,
+      "expectancy_pct": 0.5852983606557376,
+      "win_rate": 0.46885245901639344,
+      "avg_win_pct": 11.36832167832168,
+      "avg_loss_pct": -8.93304938271605,
+      "payoff": 1.2726137728867224,
+      "profit_factor": 1.1233566019926007,
+      "worst_r": -1.2198,
+      "ci95_r": [
+       -0.19308084555345317,
+       0.2715262749246552
+      ],
+      "p_vs_chance": 0.145,
+      "chance_mean_r": -0.054961812955161886,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.008527619103592716,
+       "without_top5_r": -0.02235866666666657,
+       "worst_leave_one_coin_out_r": 0.01699597315436244
+      },
+      "in_sample_expectancy_r": 0.034204035610117076,
+      "p_holm": 0.29,
+      "grade": "bassa",
+      "why": "aspettativa +0.04R ma non distinguibile dal caso (p=0.14)"
+     }
+    }
+   },
+   "in_sample": {
+    "long": {
+     "n": 795,
+     "expectancy_r": 0.17599208388552884
+    },
+    "short": {
+     "n": 467,
+     "expectancy_r": 0.034204035610117076
+    }
+   },
+   "skipped": {
+    "rischio/rendimento insufficiente in spazio libero": 852,
+    "nessun livello a favore con rischio/rendimento >= 1.5": 2485
+   }
+  },
+  "V2 V1 + regime (EMA200)": {
+   "validation": {
+    "n_coins": 20,
+    "window": "oos",
+    "sides": {
+     "long": {
+      "side": "long",
+      "n": 328,
+      "months": 42,
+      "coins": 19,
+      "expectancy_r": -0.009970731707317071,
+      "expectancy_pct": -0.8282926829268294,
+      "win_rate": 0.4024390243902439,
+      "avg_win_pct": 12.181340909090906,
+      "avg_loss_pct": -9.589882653061224,
+      "payoff": 1.2702283593848203,
+      "profit_factor": 0.8554599155040626,
+      "worst_r": -1.2349,
+      "ci95_r": [
+       -0.22422252448240168,
+       0.20510672686244324
+      ],
+      "p_vs_chance": 0.612,
+      "chance_mean_r": 0.012206109389452869,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.06618197377635604,
+       "without_top5_r": -0.06928080495356047,
+       "worst_leave_one_coin_out_r": -0.0678013698630137
+      },
+      "in_sample_expectancy_r": 0.18652610687975724,
+      "p_holm": 0.692,
+      "grade": "bassa",
+      "why": "aspettativa netta -0.01R: in perdita dopo i costi"
+     },
+     "short": {
+      "side": "short",
+      "n": 220,
+      "months": 35,
+      "coins": 19,
+      "expectancy_r": 0.04342272727272729,
+      "expectancy_pct": 1.053213636363636,
+      "win_rate": 0.4818181818181818,
+      "avg_win_pct": 12.037330188679245,
+      "avg_loss_pct": -9.160087719298247,
+      "payoff": 1.3141064318979496,
+      "profit_factor": 1.2218884366770408,
+      "worst_r": -1.2198,
+      "ci95_r": [
+       -0.23206985769230765,
+       0.33151161130831647
+      ],
+      "p_vs_chance": 0.346,
+      "chance_mean_r": 0.006039973073746769,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": 0.0017751370652265115,
+       "without_top5_r": -0.03630465116279068,
+       "worst_leave_one_coin_out_r": 0.001757692307692319
+      },
+      "in_sample_expectancy_r": 0.09294684970423776,
+      "p_holm": 0.692,
+      "grade": "bassa",
+      "why": "aspettativa +0.04R ma non distinguibile dal caso (p=0.35)"
+     }
+    }
+   },
+   "in_sample": {
+    "long": {
+     "n": 401,
+     "expectancy_r": 0.18652610687975724
+    },
+    "short": {
+     "n": 274,
+     "expectancy_r": 0.09294684970423776
+    }
+   },
+   "skipped": {
+    "rischio/rendimento insufficiente in spazio libero": 711,
+    "nessun livello a favore con rischio/rendimento >= 1.5": 2030
+   }
+  },
+  "V3 V1 + 3 voti minimi": {
+   "validation": {
+    "n_coins": 17,
+    "window": "oos",
+    "sides": {
+     "long": {
+      "side": "long",
+      "n": 113,
+      "months": 38,
+      "coins": 17,
+      "expectancy_r": 0.00961681415929204,
+      "expectancy_pct": -0.7265840707964604,
+      "win_rate": 0.4424778761061947,
+      "avg_win_pct": 10.38726,
+      "avg_loss_pct": -9.547095238095238,
+      "payoff": 1.0880021347804618,
+      "profit_factor": 0.8634937577622712,
+      "worst_r": -1.1334,
+      "ci95_r": [
+       -0.2144120618872549,
+       0.24799086118957922
+      ],
+      "p_vs_chance": 0.424,
+      "chance_mean_r": -0.01602674142874038,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.03355760655600228,
+       "without_top5_r": -0.12966759259259256,
+       "worst_leave_one_coin_out_r": -0.07494842105263158
+      },
+      "in_sample_expectancy_r": 0.14925841442875298,
+      "p_holm": 0.424,
+      "grade": "bassa",
+      "why": "aspettativa +0.01R ma non distinguibile dal caso (p=0.42)"
+     },
+     "short": {
+      "side": "short",
+      "n": 9,
+      "months": 8,
+      "coins": 5,
+      "expectancy_r": 1.2652555555555554,
+      "expectancy_pct": 11.436444444444444,
+      "win_rate": 0.7777777777777778,
+      "avg_win_pct": 15.733142857142859,
+      "avg_loss_pct": -3.6020000000000003,
+      "payoff": 4.3678908542873005,
+      "profit_factor": 15.287617990005552,
+      "worst_r": -1.077,
+      "ci95_r": [
+       0.09486875000000003,
+       2.3200517708333326
+      ],
+      "p_vs_chance": 0.001,
+      "chance_mean_r": -0.09846113176668733,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": 1.217232006080727,
+       "without_top5_r": -0.12519999999999995,
+       "worst_leave_one_coin_out_r": 0.8315166666666668
+      },
+      "in_sample_expectancy_r": -0.33763358828132994,
+      "p_holm": 0.002,
+      "grade": "non valutabile",
+      "why": "9 operazioni su 8 mesi nel periodo fuori campione (servono almeno 30 operazioni e 6 mesi)"
+     }
+    }
+   },
+   "in_sample": {
+    "long": {
+     "n": 180,
+     "expectancy_r": 0.14449647575579203
+    },
+    "short": {
+     "n": 32,
+     "expectancy_r": -0.2907056473583166
+    }
+   },
+   "skipped": {
+    "rischio/rendimento insufficiente in spazio libero": 50,
+    "nessun livello a favore con rischio/rendimento >= 1.5": 205
+   }
+  },
+  "V4 V1 solo trend (senza ritorno alla media)": {
+   "validation": {
+    "n_coins": 20,
+    "window": "oos",
+    "sides": {
+     "long": {
+      "side": "long",
+      "n": 615,
+      "months": 44,
+      "coins": 20,
+      "expectancy_r": 0.0013190243902439132,
+      "expectancy_pct": -0.4971626016260164,
+      "win_rate": 0.408130081300813,
+      "avg_win_pct": 12.253884462151394,
+      "avg_loss_pct": -9.28978021978022,
+      "payoff": 1.3190715143141785,
+      "profit_factor": 0.9095795332221395,
+      "worst_r": -1.397,
+      "ci95_r": [
+       -0.18504643547970534,
+       0.18197233825765494
+      ],
+      "p_vs_chance": 0.444,
+      "chance_mean_r": -0.0038452189454289427,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.05108458534068895,
+       "without_top5_r": -0.028884590163934507,
+       "worst_leave_one_coin_out_r": -0.016470246478873237
+      },
+      "in_sample_expectancy_r": 0.20464513365350676,
+      "p_holm": 0.444,
+      "grade": "bassa",
+      "why": "aspettativa +0.00R ma non distinguibile dal caso (p=0.44)"
+     },
+     "short": {
+      "side": "short",
+      "n": 305,
+      "months": 43,
+      "coins": 20,
+      "expectancy_r": 0.04316590163934427,
+      "expectancy_pct": 0.4360295081967211,
+      "win_rate": 0.46885245901639344,
+      "avg_win_pct": 10.96418881118881,
+      "avg_loss_pct": -8.857345679012347,
+      "payoff": 1.2378639389866728,
+      "profit_factor": 1.0926823658956433,
+      "worst_r": -1.2198,
+      "ci95_r": [
+       -0.14820662345096983,
+       0.22932450734394122
+      ],
+      "p_vs_chance": 0.12,
+      "chance_mean_r": -0.0589031299569466,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.0013973985051370875,
+       "without_top5_r": -0.011720666666666707,
+       "worst_leave_one_coin_out_r": 0.023373648648648642
+      },
+      "in_sample_expectancy_r": 0.06463714579066399,
+      "p_holm": 0.24,
+      "grade": "bassa",
+      "why": "aspettativa +0.04R ma non distinguibile dal caso (p=0.12)"
+     }
+    }
+   },
+   "in_sample": {
+    "long": {
+     "n": 859,
+     "expectancy_r": 0.20464513365350676
+    },
+    "short": {
+     "n": 451,
+     "expectancy_r": 0.06463714579066399
+    }
+   },
+   "skipped": {
+    "rischio/rendimento insufficiente in spazio libero": 1095,
+    "nessun livello a favore con rischio/rendimento >= 1.5": 2676
+   }
+  },
+  "V5 V1 solo ritorno alla media (senza trend)": {
+   "validation": {
+    "n_coins": 20,
+    "window": "oos",
+    "sides": {
+     "long": {
+      "side": "long",
+      "n": 244,
+      "months": 32,
+      "coins": 20,
+      "expectancy_r": -0.024560655737704926,
+      "expectancy_pct": -0.4856639344262298,
+      "win_rate": 0.47540983606557374,
+      "avg_win_pct": 9.078465517241376,
+      "avg_loss_pct": -9.15315625,
+      "payoff": 0.9918398931779819,
+      "profit_factor": 0.8988549031925461,
+      "worst_r": -1.128,
+      "ci95_r": [
+       -0.23385083098877624,
+       0.1661547571090047
+      ],
+      "p_vs_chance": 0.476,
+      "chance_mean_r": -0.0237812481232813,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.05835243300457131,
+       "without_top5_r": -0.08100920502092049,
+       "worst_leave_one_coin_out_r": -0.05244608294930877
+      },
+      "in_sample_expectancy_r": -0.04716929794524812,
+      "p_holm": 0.952,
+      "grade": "bassa",
+      "why": "aspettativa netta -0.02R: in perdita dopo i costi"
+     },
+     "short": {
+      "side": "short",
+      "n": 138,
+      "months": 28,
+      "coins": 20,
+      "expectancy_r": -0.26234202898550724,
+      "expectancy_pct": -1.4723478260869571,
+      "win_rate": 0.36231884057971014,
+      "avg_win_pct": 11.8106,
+      "avg_loss_pct": -9.019477272727274,
+      "payoff": 1.3094550430003753,
+      "profit_factor": 0.7440085471593043,
+      "worst_r": -1.2599,
+      "ci95_r": [
+       -0.516745235380117,
+       0.033883609717868204
+      ],
+      "p_vs_chance": 0.897,
+      "chance_mean_r": -0.06338894671643419,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.32096315748647053,
+       "without_top5_r": -0.3550849624060151,
+       "worst_leave_one_coin_out_r": -0.3046603053435115
+      },
+      "in_sample_expectancy_r": -0.37748146079512035,
+      "p_holm": 0.952,
+      "grade": "bassa",
+      "why": "aspettativa netta -0.26R: in perdita dopo i costi"
+     }
+    }
+   },
+   "in_sample": {
+    "long": {
+     "n": 385,
+     "expectancy_r": -0.04716929794524812
+    },
+    "short": {
+     "n": 350,
+     "expectancy_r": -0.37748146079512035
+    }
+   },
+   "skipped": {
+    "rischio/rendimento insufficiente in spazio libero": 25,
+    "nessun livello a favore con rischio/rendimento >= 1.5": 300
+   }
+  },
+  "V6 V1 + ingresso vicino a livello": {
+   "validation": {
+    "n_coins": 20,
+    "window": "oos",
+    "sides": {
+     "long": {
+      "side": "long",
+      "n": 373,
+      "months": 45,
+      "coins": 20,
+      "expectancy_r": -0.006770509383378029,
+      "expectancy_pct": -0.7808632707774803,
+      "win_rate": 0.41823056300268097,
+      "avg_win_pct": 11.179217948717948,
+      "avg_loss_pct": -9.37889400921659,
+      "payoff": 1.1919548230028176,
+      "profit_factor": 0.8568891815135463,
+      "worst_r": -1.2772,
+      "ci95_r": [
+       -0.20476451306477728,
+       0.2074554892281551
+      ],
+      "p_vs_chance": 0.44,
+      "chance_mean_r": -0.01195876252025526,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.06407394061302013,
+       "without_top5_r": -0.054996195652173965,
+       "worst_leave_one_coin_out_r": -0.058156195965417885
+      },
+      "in_sample_expectancy_r": 0.16748744056415096,
+      "p_holm": 0.44,
+      "grade": "bassa",
+      "why": "aspettativa netta -0.01R: in perdita dopo i costi"
+     },
+     "short": {
+      "side": "short",
+      "n": 197,
+      "months": 41,
+      "coins": 19,
+      "expectancy_r": 0.02786649746192894,
+      "expectancy_pct": 0.7737817258883245,
+      "win_rate": 0.4517766497461929,
+      "avg_win_pct": 11.039696629213482,
+      "avg_loss_pct": -7.686092592592591,
+      "payoff": 1.4363210560139361,
+      "profit_factor": 1.1836349443077805,
+      "worst_r": -1.1676,
+      "ci95_r": [
+       -0.24186926663113004,
+       0.3237207989018531
+      ],
+      "p_vs_chance": 0.183,
+      "chance_mean_r": -0.0621738083492181,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.02457606462619863,
+       "without_top5_r": -0.05998489583333333,
+       "worst_leave_one_coin_out_r": -0.003117894736842075
+      },
+      "in_sample_expectancy_r": 0.07354286200944567,
+      "p_holm": 0.366,
+      "grade": "bassa",
+      "why": "aspettativa +0.03R ma non distinguibile dal caso (p=0.18)"
+     }
+    }
+   },
+   "in_sample": {
+    "long": {
+     "n": 499,
+     "expectancy_r": 0.16748744056415096
+    },
+    "short": {
+     "n": 296,
+     "expectancy_r": 0.07354286200944567
+    }
+   },
+   "skipped": {
+    "nessun livello a favore con rischio/rendimento >= 1.5": 1239,
+    "rischio/rendimento insufficiente in spazio libero": 197
+   }
+  },
+  "V7 V1 senza on-chain/sentiment": {
+   "validation": {
+    "n_coins": 20,
+    "window": "oos",
+    "sides": {
+     "long": {
+      "side": "long",
+      "n": 507,
+      "months": 45,
+      "coins": 20,
+      "expectancy_r": 0.0053270216962524675,
+      "expectancy_pct": -0.7183333333333336,
+      "win_rate": 0.42011834319526625,
+      "avg_win_pct": 12.09784976525822,
+      "avg_loss_pct": -10.003527210884352,
+      "payoff": 1.2093584103110286,
+      "profit_factor": 0.8761678278783983,
+      "worst_r": -1.2349,
+      "ci95_r": [
+       -0.20326629289137765,
+       0.22051595360855084
+      ],
+      "p_vs_chance": 0.414,
+      "chance_mean_r": -0.010124270682983006,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.045370008187406205,
+       "without_top5_r": -0.029856772908366597,
+       "worst_leave_one_coin_out_r": -0.03031004273504273
+      },
+      "in_sample_expectancy_r": 0.22954134867161877,
+      "p_holm": 0.53,
+      "grade": "bassa",
+      "why": "aspettativa +0.01R ma non distinguibile dal caso (p=0.41)"
+     },
+     "short": {
+      "side": "short",
+      "n": 459,
+      "months": 44,
+      "coins": 20,
+      "expectancy_r": 0.02128039215686275,
+      "expectancy_pct": 0.31944008714596933,
+      "win_rate": 0.4553376906318083,
+      "avg_win_pct": 11.17156937799043,
+      "avg_loss_pct": -8.752939999999999,
+      "payoff": 1.2763219418835763,
+      "profit_factor": 1.06700514341467,
+      "worst_r": -1.2198,
+      "ci95_r": [
+       -0.18796550568870768,
+       0.25583932415972976
+      ],
+      "p_vs_chance": 0.265,
+      "chance_mean_r": -0.021716133867301438,
+      "n_null": 999,
+      "robust": {
+       "double_costs_r": -0.024028313509229245,
+       "without_top5_r": -0.018225330396475795,
+       "worst_leave_one_coin_out_r": -0.006346028037383171
+      },
+      "in_sample_expectancy_r": 0.03854560063423183,
+      "p_holm": 0.53,
+      "grade": "bassa",
+      "why": "aspettativa +0.02R ma non distinguibile dal caso (p=0.27)"
+     }
+    }
+   },
+   "in_sample": {
+    "long": {
+     "n": 752,
+     "expectancy_r": 0.22954134867161877
+    },
+    "short": {
+     "n": 656,
+     "expectancy_r": 0.03854560063423183
+    }
+   },
+   "skipped": {
+    "rischio/rendimento insufficiente in spazio libero": 1347,
+    "nessun livello a favore con rischio/rendimento >= 1.5": 3503
+   }
+  }
+ },
+ "holm": {
+  "V0 uscite ATR fisse (2/3)|long": 1.0,
+  "V0 uscite ATR fisse (2/3)|short": 1.0,
+  "V1 uscite da supporti/resistenze|long": 1.0,
+  "V1 uscite da supporti/resistenze|short": 1.0,
+  "V2 V1 + regime (EMA200)|long": 1.0,
+  "V2 V1 + regime (EMA200)|short": 1.0,
+  "V3 V1 + 3 voti minimi|long": 1.0,
+  "V3 V1 + 3 voti minimi|short": 0.016,
+  "V4 V1 solo trend (senza ritorno alla media)|long": 1.0,
+  "V4 V1 solo trend (senza ritorno alla media)|short": 1.0,
+  "V5 V1 solo ritorno alla media (senza trend)|long": 1.0,
+  "V5 V1 solo ritorno alla media (senza trend)|short": 1.0,
+  "V6 V1 + ingresso vicino a livello|long": 1.0,
+  "V6 V1 + ingresso vicino a livello|short": 1.0,
+  "V7 V1 senza on-chain/sentiment|long": 1.0,
+  "V7 V1 senza on-chain/sentiment|short": 1.0
+ }
+}

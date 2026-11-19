@@ -17,8 +17,12 @@ const GROUPS = [
   ["On-chain e sentiment", [["mvrv_lo", "MVRV fondo", 0.1, 0], ["mvrv_hi", "MVRV picco", 0.1, 0], ["sopr_lo", "SOPR sotto", 0.01, 0.5],
     ["sopr_hi", "SOPR sopra", 0.01, 0.5], ["nvt_pct", "NVT percentile", 0.05, 0.5], ["flow_z", "Flussi z-score", 0.1, 0.5],
     ["fg_lo", "Paura sotto", 1, 0], ["fg_hi", "Avidità sopra", 1, 0]]],
-  ["Operazione", [["horizon", "Orizzonte (giorni)", 1, 2], ["atr_stop", "Stop (×ATR)", 0.1, 0.3], ["atr_tp", "Target (×ATR)", 0.1, 0.3],
-    ["min_votes", "Voti minimi", 1, 1], ["cost_bps", "Costi (bps)", 1, 0], ["slippage_bps", "Slippage (bps)", 1, 0]]],
+  ["Strategia", [["trail", "Stop mobile (1/0)", 1, 0], ["exit_sr", "Uscite da livelli (1/0)", 1, 0], ["regime", "Solo nel verso EMA200 (1/0)", 1, 0],
+    ["near_level", "Solo vicino a un livello (1/0)", 1, 0], ["w_trend", "Peso trend", 0.5, 0], ["w_mr", "Peso ritorno alla media", 0.5, 0],
+    ["w_chain", "Peso on-chain", 0.5, 0], ["min_votes", "Voti minimi", 0.5, 0.5]]],
+  ["Uscite e costi", [["horizon", "Orizzonte (giorni)", 1, 2], ["min_rr", "R/R minimo", 0.1, 1], ["stop_buf", "Margine stop (ATR)", 0.05, 0],
+    ["tp_buf", "Margine target (ATR)", 0.05, 0], ["atr_stop", "Stop ATR (se senza livelli)", 0.1, 0.3], ["atr_tp", "Target ATR (se senza livelli)", 0.1, 0.3],
+    ["cost_bps", "Commissione (bps/lato)", 1, 0], ["slippage_bps", "Slippage (bps/lato)", 1, 0], ["stop_slip_bps", "Slippage extra sugli stop (bps)", 1, 0]]],
 ];
 
 async function api(path, opt) {
@@ -37,29 +41,48 @@ function query() {
 }
 
 // ---------------------------------------------------------------- segnale
+const R2 = x => x == null ? "–" : (x >= 0 ? "+" : "") + Number(x).toFixed(2) + "R";
+const P2 = x => x == null ? "–" : (x >= 0 ? "+" : "") + Number(x).toFixed(1) + "%";
+const GRADE = g => g === "alta" ? "alta" : g === "media" ? "media" : g === "bassa" ? "bassa" : "muted";
+
+function statLine(s, label) {
+  if (!s || !s.n) return `<p class="small muted">${label}: nessuna operazione storica.</p>`;
+  return `<p class="small"><b>${label}</b> — ${s.n} operazioni: vincite ${pct(s.win_rate)}, guadagno medio ${P2(s.avg_win_pct)}, perdita media ${P2(s.avg_loss_pct)}
+    (rapporto ${s.payoff == null ? "–" : s.payoff.toFixed(2)}), <b>aspettativa ${P2(s.expectancy_pct)} per operazione (${R2(s.expectancy_r)})</b>, profit factor ${s.profit_factor == null ? "–" : s.profit_factor.toFixed(2)}.</p>`;
+}
+
 function renderSignal(s) {
   const el = $("#signal");
   if (!s.params) { el.innerHTML = `<div class="err">${esc(s.why || s.action)}</div>`; return; }
-  const h = s.history, o = h.out_of_sample, i = h.in_sample, b = h.baseline_out_of_sample, rel = s.reliability;
-  const cls = s.side === "long" ? "long" : s.side === "short" ? "short" : "wait";
-  const levels = s.side ? `<div class="kv">
+  const h = s.history, rel = s.reliability || {}, side = s.side;
+  const cls = side === "long" ? "long" : side === "short" ? "short" : "wait";
+  const oos = h.out_of_sample, rnd = h.random_out_of_sample || {};
+  const levels = side ? `<div class="kv">
       <div><span>Ingresso</span><b>${price(s.entry)}</b></div>
-      <div><span>Stop loss</span><b style="color:var(--dn)">${price(s.stop_loss)}</b></div>
-      <div><span>Take profit</span><b style="color:var(--up)">${price(s.take_profit)}</b></div>
-      <div><span>Orizzonte · R/R</span><b>${s.horizon_days} gg · ${fmt(s.risk_reward, 1)}</b></div></div>` : `<p class="muted">Nessun segnale attivo: il punteggio (${fmt(s.score, 0)}) non raggiunge i ${s.min_votes} voti concordi richiesti. Prezzo ${price(s.price)} al ${esc(s.asof)}.</p>`;
-  const stat = o.n ? `<b>${pct(o.win_rate)}</b> di operazioni in positivo su <b>${o.n}</b> fuori campione (dal ${esc(h.split_date)}),
-      netto medio ${fmt(o.mean_net_pct)}%; target ${pct(o.target_rate)}, stop ${pct(o.stop_rate)}.
-      ${b.n ? `Ingresso casuale nella stessa direzione: ${pct(b.win_rate)}.` : ""}
-      In campione: ${i.n ? `${pct(i.win_rate)} su ${i.n}` : "–"}.` : "Nessuna operazione storica fuori campione.";
+      <div><span>Stop loss (${fmt(s.risk_pct, 1)}%)</span><b style="color:var(--dn)">${price(s.stop_loss)}</b><small class="muted">${esc(s.basis_stop || "")}</small></div>
+      <div><span>${s.tp_is_indicative ? "Take profit indicativo" : "Take profit"}</span><b style="color:var(--up)">${price(s.take_profit)}</b><small class="muted">${esc(s.basis_tp || "")}</small></div>
+      <div><span>Orizzonte${s.risk_reward ? " · R/R" : ""}</span><b>${s.horizon_days} gg${s.risk_reward ? " · " + fmt(s.risk_reward, 1) : ""}</b></div></div>
+      <p class="small muted">${esc(s.exit_rule || "")}</p>`
+    : `<p class="muted">Nessun segnale attivo: il punteggio (${fmt(s.score, 0)}) non raggiunge i ${fmt(s.min_votes, 0)} voti concordi richiesti, oppure i filtri
+       (regime, livelli) lo escludono. Prezzo ${price(s.price)} al ${esc(s.asof)}.${s.skipped_reason ? `<br><b>Segnale scartato:</b> ${esc(s.skipped_reason)}.` : ""}</p>`;
   const votes = s.votes.map(v => `<span class="chip ${v.vote > 0 ? "p" : v.vote < 0 ? "n" : ""}" title="${esc(v.family)}">${v.vote > 0 ? "▲" : v.vote < 0 ? "▼" : "•"} ${NAMES[v.indicator] || v.indicator}</span>`).join("");
   const miss = s.onchain_missing.length ? `<p class="muted small">Dati non disponibili per questa moneta, quindi non votano: ${s.onchain_missing.map(k => NAMES[k] || k).join(", ")}.</p>` : "";
+  const bySide = s.reliability_by_side && Object.keys(s.reliability_by_side).length
+    ? Object.entries(s.reliability_by_side).map(([k, v]) => `<span class="chip">${k}: <b class="${GRADE(v.grade)}">${esc(v.grade)}</b> (${v.n} op., ${R2(v.expectancy_r)})</span>`).join("") : "";
+  const sel = side || "all";
+  const chance = rnd[side || "long"];
   el.innerHTML = `<div class="row between"><div><span class="badge ${cls}">${esc(s.action)}</span>
       <span class="muted"> ${esc(state.coin)} · ${esc(s.asof)}</span></div>
-      <div>Affidabilità <b class="${rel.grade === "alta" ? "alta" : rel.grade === "media" ? "media" : "bassa"}">${esc(rel.grade)}</b></div></div>
+      <div title="${esc(rel.scope || "")}">Affidabilità <b class="${GRADE(rel.grade)}">${esc(rel.grade || "–")}</b></div></div>
     ${s.positioning ? `<p><b>Posizionamento:</b> ${esc(s.positioning)}</p>` : ""}
     ${levels}<div class="chips">${votes}</div>
-    <p class="small">${stat}</p><p class="muted small">${esc(rel.why)}.</p>${miss}
-    <p class="muted small">${esc(s.note)}</p>`;
+    <p class="small">${esc(rel.why || "")}${rel.scope ? ` <span class="muted">(${esc(rel.scope)})</span>` : ""}</p>
+    ${bySide ? `<div class="chips">${bySide}</div>` : ""}
+    <h3 class="small muted" style="margin:10px 0 2px">Su questa moneta, solo periodo fuori campione (dal ${esc(h.split_date)})</h3>
+    ${statLine(oos[sel], sel === "all" ? "Tutte le operazioni" : "Operazioni " + sel)}
+    ${chance && chance.n ? `<p class="small muted"><b>Il “caso”</b>: entrare a ogni barra con le stesse regole di uscita avrebbe dato ${R2(chance.expectancy_r)} per operazione (${pct(chance.win_rate)} di vincite).
+      Conta solo ciò che supera questo valore, non la percentuale di vincite.</p>` : ""}
+    ${miss}<p class="muted small">${esc(s.note)}</p>`;
 }
 
 // ---------------------------------------------------------------- parametri
@@ -117,9 +140,14 @@ function renderChart(d) {
   if (tr.length) traces.push({x: tr.map(x => x.date), y: tr.map(x => s.c[pos[x.date]]), type: "scatter", mode: "markers", name: "Operazioni storiche",
     marker: {symbol: tr.map(x => x.dir > 0 ? "triangle-up" : "triangle-down"), size: 11, color: tr.map(x => x.net > 0 ? up : dn), line: {color: tx, width: 1}},
     text: tr.map(x => `${x.dir > 0 ? "long" : "short"} · esito ${x.exit} · ${(x.net * 100).toFixed(1)}%`), hovertemplate: "%{text}", showlegend: false});
+  (sig.levels || []).forEach(z => {
+    shapes.push({type: "line", xref: "x", yref: "y", x0: t[Math.max(0, t.length - 150)], x1: t[t.length - 1], y0: z.price, y1: z.price,
+      line: {color: mut, width: Math.min(3, 1 + z.touches / 4), dash: "dot"}, opacity: 0.8});
+    ann.push({x: t[Math.max(0, t.length - 150)], y: z.price, xref: "x", yref: "y", text: `${z.touches}×`, showarrow: false, xanchor: "left", yanchor: "bottom", font: {color: mut, size: 10}});
+  });
   if (sig.side) {
     const x0 = t[Math.max(0, t.length - 25)], x1 = t[t.length - 1];
-    [[sig.entry, tx, "ingresso"], [sig.stop_loss, dn, "stop"], [sig.take_profit, up, "target"]].forEach(([y, c, n]) => {
+    [[sig.entry, tx, "ingresso"], [sig.stop_loss, dn, "stop"], [sig.take_profit, up, sig.tp_is_indicative ? "target indic." : "target"]].filter(x => x[0] != null).forEach(([y, c, n]) => {
       shapes.push({type: "line", xref: "x", yref: "y", x0, x1, y0: y, y1: y, line: {color: c, width: 1.5, dash: "dash"}});
       ann.push({x: x1, y, xref: "x", yref: "y", text: n, showarrow: false, xanchor: "left", font: {color: c, size: 11}});
     });
@@ -151,7 +179,7 @@ function renderChart(d) {
       text: TITLES[x.id], font: {color: mut, size: 11}});
   });
   Plotly.react("chart", traces, layout, {displayModeBar: false, responsive: true, scrollZoom: false});
-  $("#chart-note").textContent = "Trascina per spostarti nel tempo. I triangoli sono le operazioni storiche del segnale (verde = chiusa in positivo).";
+  $("#chart-note").textContent = "Trascina per spostarti nel tempo. Triangoli = operazioni storiche (verde = chiusa in positivo). Linee punteggiate = supporti/resistenze importanti, con il numero di tocchi.";
 }
 
 // ---------------------------------------------------------------- caricamento
@@ -169,6 +197,18 @@ async function load() {
   }
 }
 
+async function loadTrack() {
+  try {
+    const d = await api("/api/aha/track"), s = d.summary, el = $("#track");
+    if (!s.n_logged) { el.textContent = "Nessun segnale ancora registrato: appena ne compare uno attivo viene salvato qui."; return; }
+    const a = s.all;
+    el.innerHTML = `<p>${s.n_logged} registrati · ${s.n_open} aperti · ${s.n_closed} chiusi${a ? ` · aspettativa ${R2(a.expectancy_r)} (${a.n} chiusi, vincite ${pct(a.win_rate)})` : ""}</p>
+      <div class="tablewrap"><table><thead><tr><th>Data</th><th>Moneta</th><th>Verso</th><th>Stato</th><th>Esito</th></tr></thead><tbody>` +
+      d.entries.slice(0, 15).map(e => `<tr><td>${esc(e.asof)}</td><td>${esc(e.coin)}</td><td>${esc(e.side)}</td><td>${esc(e.status)}</td>
+        <td>${e.status === "chiuso" ? `${R2(e.r)} (${esc(e.exit)})` : esc(e.why || "–")}</td></tr>`).join("") + "</tbody></table></div>";
+  } catch (e) {}
+}
+
 async function loadList() {
   try {
     const d = await api("/api/aha/signals");
@@ -178,11 +218,16 @@ async function loadList() {
     }
     if (![...sel.options].some(o => o.value === state.coin) && sel.options.length) state.coin = sel.options[0].value;
     sel.value = state.coin;
-    $("#list tbody").innerHTML = d.signals.map(r => `<tr data-id="${esc(r.id)}" class="${r.id === state.coin ? "sel" : ""}">
+    $("#list tbody").innerHTML = d.signals.map(r => {
+      const rel = r.reliability || {}, bs = r.reliability_by_side || {};
+      const g = r.side ? rel.grade : null;
+      const best = !g ? Object.values(bs).map(v => v.grade).sort((x, y) => ({alta: 0, media: 1, bassa: 2}[x] ?? 3) - ({alta: 0, media: 1, bassa: 2}[y] ?? 3))[0] : g;
+      return `<tr data-id="${esc(r.id)}" class="${r.id === state.coin ? "sel" : ""}">
       <td><b>${esc(r.id)}</b></td>
       <td class="${r.side === "long" ? "alta" : r.side === "short" ? "bassa" : "muted"}">${esc(r.action)}</td>
-      <td class="${(r.reliability || {}).grade === "alta" ? "alta" : (r.reliability || {}).grade === "media" ? "media" : "bassa"}">${esc((r.reliability || {}).grade || "–")}</td>
-      <td>${r.n_oos ? `${pct(r.win_rate_oos)} <span class="muted">(${r.n_oos})</span>` : "–"}</td></tr>`).join("");
+      <td class="${GRADE(best)}">${esc(best || "–")}${g ? "" : " <span class='muted'>(pool)</span>"}</td>
+      <td>${r.side && rel.expectancy_r != null ? R2(rel.expectancy_r) : "–"}</td></tr>`;
+    }).join("");
     return d.signals.length;
   } catch (e) { return 0; }
 }
@@ -236,6 +281,7 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").cat
 
 window.addEventListener("DOMContentLoaded", async () => {
   const n = await loadList();
+  loadTrack();
   if (n) load(); else { $("#signal").innerHTML = `<div class="muted">Nessuna analisi disponibile: premi “Aggiorna” per scaricare i dati.</div>`; pollStatus(); }
   pollStatus();
 });

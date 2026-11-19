@@ -12,7 +12,7 @@ from app import execution as ex, storage  # noqa: E402
 
 def sig(**kw):
     s = {"side": "long", "entry": 100.0, "stop_loss": 95.0, "take_profit": 110.0, "horizon_days": 14, "asof": "2026-11-18",
-         "reliability": {"grade": "alta", "score": 80}, "history": {"out_of_sample": {"n": 60, "win_rate": 0.6}}}
+         "reliability": {"grade": "alta", "n": 60}}
     s.update(kw)
     return s
 
@@ -47,8 +47,8 @@ def test_short_levels_and_side():
 
 
 @pytest.mark.parametrize("change,failed", [
-    ({"reliability": {"grade": "media", "score": 55}}, "affidabilità"),
-    ({"history": {"out_of_sample": {"n": 10}}}, "operazioni fuori campione"),
+    ({"reliability": {"grade": "media", "n": 60}}, "affidabilità"),
+    ({"reliability": {"grade": "alta", "n": 10}}, "operazioni del pool fuori campione"),
     ({"side": None}, "segnale attivo"),
 ])
 def test_safety_checks_block(change, failed):
@@ -83,7 +83,7 @@ def test_api_export_and_execution(tmp_path):
     assert len(items) == 1
     it = items[0]
     assert it["coins"] == ["bitcoin"] and it["side"] == "long" and it["targetPrice"] == 110 and it["stopPrice"] == 95
-    assert it["confidence"] == pytest.approx(0.8) and it["flags"] == ["on-chain", "sentiment"] and it["status"] == "attivo"
+    assert it["confidence"] == pytest.approx(0.8) and it["reliability"] == "alta" and it["flags"] == ["on-chain", "sentiment"] and it["status"] == "attivo"
     # spento di default: l'anteprima non genera ordini e l'esecuzione simulata è rifiutata
     assert c.get("/api/aha/execution/preview/BTC").json()["order"] is None
     assert c.post("/api/aha/execution/paper/BTC").status_code == 409

@@ -21,7 +21,7 @@ from . import storage
 from .analysis import indicators as ind
 from .analysis import stats_models as sm
 from .backtest import backtest_rule
-from . import signals
+from . import signals, tracking, validation
 from .data.adapters import ADAPTERS
 from .data.onchain import COINMETRICS, FEARGREED, Glassnode
 
@@ -673,6 +673,18 @@ def run_cycle(force=False):
         STATE["progress"] = "rete delle correlazioni"
         storage.kv_set("global", clean(global_analysis(results)))
         storage.kv_set("analysis_index", list(results.keys()))
+        STATE["progress"] = "validazione sul pool di monete"
+        try:
+            val = clean(validation.run(results))
+            storage.kv_set("aha_validation", val)
+            for iid, a in results.items():       # l'affidabilità di ogni segnale è quella del pool per il suo verso
+                if a.get("aha"):
+                    validation.attach(a["aha"], val)
+                    storage.kv_set(f"analysis:{iid}", a)
+            tracking.record(results)             # registro in avanti: la verifica fuori campione vera
+            tracking.evaluate(lambda c: storage.load_bars(c, "1d").iloc[:-1])
+        except Exception:
+            log.error("validazione: %s", traceback.format_exc())
         resolve_predictions()
         STATE["last_run"] = storage.utcnow()
         storage.kv_set("last_run", STATE["last_run"])   # sopravvive al riavvio del server
