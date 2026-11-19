@@ -1,0 +1,148 @@
+{
+ "_note": "Universo AHA: sole criptovalute (coppie USDT su Binance). Si possono aggiungere coppie dall'interfaccia.",
+ "markets": {
+  "crypto": "Criptovalute"
+ },
+ "instruments": [
+  {
+   "id": "BTC",
+   "name": "Bitcoin",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "BTCUSDT"
+  },
+  {
+   "id": "ETH",
+   "name": "Ethereum",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "ETHUSDT"
+  },
+  {
+   "id": "SOL",
+   "name": "Solana",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "SOLUSDT"
+  },
+  {
+   "id": "BNB",
+   "name": "BNB",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "BNBUSDT"
+  },
+  {
+   "id": "XRP",
+   "name": "XRP",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "XRPUSDT"
+  },
+  {
+   "id": "ADA",
+   "name": "Cardano",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "ADAUSDT"
+  },
+  {
+   "id": "DOGE",
+   "name": "Dogecoin",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "DOGEUSDT"
+  },
+  {
+   "id": "AVAX",
+   "name": "Avalanche",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "AVAXUSDT"
+  },
+  {
+   "id": "LINK",
+   "name": "Chainlink",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "LINKUSDT"
+  },
+  {
+   "id": "DOT",
+   "name": "Polkadot",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "DOTUSDT"
+  },
+  {
+   "id": "TRX",
+   "name": "TRON",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "TRXUSDT"
+  },
+  {
+   "id": "LTC",
+   "name": "Litecoin",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "LTCUSDT"
+  },
+  {
+   "id": "ATOM",
+   "name": "Cosmos",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "ATOMUSDT"
+  },
+  {
+   "id": "NEAR",
+   "name": "NEAR Protocol",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "NEARUSDT"
+  },
+  {
+   "id": "UNI",
+   "name": "Uniswap",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "UNIUSDT"
+  },
+  {
+   "id": "ARB",
+   "name": "Arbitrum",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "ARBUSDT"
+  },
+  {
+   "id": "OP",
+   "name": "Optimism",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "OPUSDT"
+  },
+  {
+   "id": "AAVE",
+   "name": "Aave",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "AAVEUSDT"
+  },
+  {
+   "id": "SUI",
+   "name": "Sui",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "SUIUSDT"
+  },
+  {
+   "id": "INJ",
+   "name": "Injective",
+   "market": "crypto",
+   "source": "binance",
+   "symbol": "INJUSDT"
+  }
+ ]
+}
