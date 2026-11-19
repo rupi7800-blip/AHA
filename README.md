@@ -55,8 +55,25 @@ Pool di 20 monete, scelta sul periodo in campione, verifica fuori campione, cost
   (p=0,37 e 0,31). Affidabilità: **bassa**. Con costi doppi +0,35R e +0,09R; **senza i 5 trade migliori +0,01R e +0,01R**: il
   risultato dipende da pochi trade molto grandi (tipico del trend-following: vince poco spesso ma molto).
 - Un grado "media" compare solo per T5 long (3 voti minimi, +0,78R, p=0,04 non corretto, Holm 1,00; senza i 5 migliori -0,06R): da non fidarsi.
-- Non è stato fatto: funding dei perpetual (su 60 giorni vale circa 0,15-0,3R: può azzerare il vantaggio sui long con leva; non pesa sullo spot),
-  confronto con buy & hold, congelamento della configurazione con l'hash del commit prima del test in avanti.
+- Non è stato fatto: congelamento della configurazione con l'hash del commit prima del test in avanti; il funding non è incluso nelle
+  statistiche R del pool (solo nel benchmark qui sotto).
+
+## Benchmark con buy & hold e funding (`research/benchmark.md`)
+
+Fuori campione, 20 monete equipesate, funding vero dei perpetual (`app/data/funding.py`, da data.binance.vision):
+
+| Portafoglio | rend. totale | Sharpe | max drawdown |
+|---|---|---|---|
+| Buy & hold | +35% | 0,44 | -75% |
+| Strategia solo long (spot) | +35% | 0,44 | -42% |
+| Strategia long+short, funding ignorato | +36% | 0,42 | -48% |
+| Strategia long+short su perpetual, con funding | +23% | 0,34 | -48% |
+| Regola semplice (sopra EMA200 long, stop mobile) | +47% | 0,49 | -40% |
+
+Letture: la strategia **non batte il buy & hold in rendimento aggiustato per il rischio** (Sharpe uguale); dimezza volatilità e
+drawdown stando in posizione il 26% dei giorni. Gli short, dopo il funding, tolgono valore (+35% → +23%). Una regola senza voti (EMA200 +
+stop mobile) fa meglio della strategia: gli indicatori non aggiungono nulla. Quest'ultimo confronto è emerso a posteriori e non
+autorizza a cambiare la strategia: è un candidato da provare nel registro in avanti.
 - Limiti: le 20 monete sono i sopravvissuti; le soglie on-chain (MVRV 1 e 3,5) vengono da letteratura costruita sull'intera storia di BTC;
   il periodo fuori campione è stato visto nel primo giro del laboratorio (il secondo è esplorativo).
 

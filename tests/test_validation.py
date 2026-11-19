@@ -119,3 +119,14 @@ def test_forward_chance_and_summary(tmp_path):
     assert ch["long"]["n"] > 100 and ch["short"]["n"] > 100
     s = tracking.summary(log)
     assert s["all"]["expectancy_r"] == pytest.approx(0.5) and s["n_open"] == 0
+
+
+def test_daily_funding_sums_three_settlements_per_day(monkeypatch):
+    import pandas as pd
+    from app.data import funding
+    t0 = int(pd.Timestamp("2026-08-01", tz="UTC").timestamp() * 1000)
+    rows = [{"calc_time": t0 + k * 8 * 3600 * 1000 + 1, "funding_interval_hours": 8, "last_funding_rate": 0.0001 * (k + 1)} for k in range(6)]
+    monkeypatch.setattr(funding, "_month", lambda s, m: pd.DataFrame(rows) if m == "2026-08" else None)
+    s = funding.daily_funding("BTCUSDT", start="2026-08")
+    assert list(s.round(6)) == [0.0006, 0.0015]                  # 3 regolamenti al giorno sommati; mesi assenti saltati
+    assert s.index[0] == pd.Timestamp("2026-08-01", tz="UTC")

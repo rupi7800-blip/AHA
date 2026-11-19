@@ -213,7 +213,7 @@ class Trader:
         return {"i": i, "e": e, "bars": j - e + 1, "side": side, "gross": float(gross), "cost": float(cost),
                 "net": float(gross - cost), "r": float((gross - cost) / risk), "exit": why,
                 "rr": None if tp is None else float(abs(tp - entry) / abs(entry - stop0)), "risk_pct": float(risk * 100),
-                "basis_stop": bs, "basis_tp": bt, "date": str(self.df.index[i])[:10]}
+                "basis_stop": bs, "basis_tp": bt, "date": str(self.df.index[i])[:10], "entry": float(entry), "exit_px": float(exit_px)}
 
     def allowed(self, i: int, side: int) -> bool:
         """Filtri d'ingresso opzionali: regime (EMA200) e vicinanza a un livello importante."""

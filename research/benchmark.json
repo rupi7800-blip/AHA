@@ -1,0 +1,139 @@
+{
+ "portfolio": {
+  "bh": {
+   "total_pct": 34.768239084437226,
+   "cagr_pct": 8.566966561788103,
+   "vol_pct": 62.11911948577868,
+   "sharpe": 0.4439022045287838,
+   "max_dd_pct": -75.23778405628804,
+   "days": 1325
+  },
+  "long_spot": {
+   "total_pct": 35.365581140881574,
+   "cagr_pct": 8.699313561824628,
+   "vol_pct": 28.06341313412369,
+   "sharpe": 0.43755977787090045,
+   "max_dd_pct": -42.2690503719894,
+   "days": 1325
+  },
+  "ls_nofund": {
+   "total_pct": 36.41728116558098,
+   "cagr_pct": 8.931303312665516,
+   "vol_pct": 33.05563880526024,
+   "sharpe": 0.42437748726316077,
+   "max_dd_pct": -47.62665439725266,
+   "days": 1325
+  },
+  "ls_fund": {
+   "total_pct": 22.794325370587053,
+   "cagr_pct": 5.819595486079998,
+   "vol_pct": 33.03369194561838,
+   "sharpe": 0.33675699564446737,
+   "max_dd_pct": -48.3335040731156,
+   "days": 1325
+  },
+  "simple_long_spot": {
+   "total_pct": 47.22214973184431,
+   "cagr_pct": 11.242784284996166,
+   "vol_pct": 33.53851122873345,
+   "sharpe": 0.48567947004415496,
+   "max_dd_pct": -40.025122981605385,
+   "days": 1325
+  },
+  "simple_ls_fund": {
+   "total_pct": 25.492182149525156,
+   "cagr_pct": 6.455009214558949,
+   "vol_pct": 42.30743109501006,
+   "sharpe": 0.36018839354519566,
+   "max_dd_pct": -47.668331436980495,
+   "days": 1325
+  }
+ },
+ "funding_coverage": {
+  "BTC": {
+   "funding_days": 2496,
+   "from": "2020-01-01"
+  },
+  "ETH": {
+   "funding_days": 2496,
+   "from": "2020-01-01"
+  },
+  "SOL": {
+   "funding_days": 2240,
+   "from": "2020-09-13"
+  },
+  "BNB": {
+   "funding_days": 2456,
+   "from": "2020-02-10"
+  },
+  "XRP": {
+   "funding_days": 2491,
+   "from": "2020-01-06"
+  },
+  "ADA": {
+   "funding_days": 2478,
+   "from": "2020-01-19"
+  },
+  "DOGE": {
+   "funding_days": 2305,
+   "from": "2020-07-10"
+  },
+  "AVAX": {
+   "funding_days": 2231,
+   "from": "2020-09-22"
+  },
+  "LINK": {
+   "funding_days": 2480,
+   "from": "2020-01-17"
+  },
+  "DOT": {
+   "funding_days": 2264,
+   "from": "2020-08-20"
+  },
+  "TRX": {
+   "funding_days": 2482,
+   "from": "2020-01-15"
+  },
+  "LTC": {
+   "funding_days": 2488,
+   "from": "2020-01-09"
+  },
+  "ATOM": {
+   "funding_days": 2460,
+   "from": "2020-02-06"
+  },
+  "NEAR": {
+   "funding_days": 2209,
+   "from": "2020-10-14"
+  },
+  "UNI": {
+   "funding_days": 2236,
+   "from": "2020-09-17"
+  },
+  "ARB": {
+   "funding_days": 1319,
+   "from": "2023-03-23"
+  },
+  "OP": {
+   "funding_days": 1614,
+   "from": "2022-06-01"
+  },
+  "AAVE": {
+   "funding_days": 2207,
+   "from": "2020-10-16"
+  },
+  "SUI": {
+   "funding_days": 1278,
+   "from": "2023-05-03"
+  },
+  "INJ": {
+   "funding_days": 1538,
+   "from": "2022-08-16"
+  }
+ },
+ "exposure": {
+  "long_spot": 0.25538972231429335,
+  "ls_fund": 0.546503974163518,
+  "simple_ls_fund": 0.9019252278732648
+ }
+}
