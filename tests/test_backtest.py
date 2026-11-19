@@ -120,3 +120,64 @@ def test_api_backtest_endpoint(tmp_path, monkeypatch):
     assert c.get("/api/aha/backtest/BTC?start=2026-01-01&end=2026-02-01&include_reserved=1").status_code == 422
     assert c.get("/api/aha/backtest/NOPE").status_code == 404
     assert '"_trades"' not in r.text and '"_outcomes"' not in r.text
+
+
+def test_short_daily_returns_replicate_trade_pnl_even_with_large_moves():
+    # il caso indicato dall'audit: short, ingresso 100, chiusura 50 il giorno 1, uscita a 100 il giorno 2 -> risultato 0%
+    idx = pd.date_range("2024-01-01", periods=6, freq="D", tz="UTC")
+    c = np.array([100, 100, 50.0, 100, 100, 100])
+    df = pd.DataFrame({"open": [100, 100, 100, 50, 100, 100.0], "high": c * 1.0 + 50, "low": c * 1.0 - 1, "close": c, "volume": 1.0}, index=idx)
+    tr = sg.Trader(df, pd.Series(2.0, index=idx), dict(sg.DEFAULTS, cost_bps=0, slippage_bps=0, stop_slip_bps=0, horizon=3))
+    trade = {"side": -1, "e": 1, "bars": 2, "entry": 100.0, "exit_px": 100.0, "cost": 0.0}
+    r = bt.daily_returns(tr, [trade], 0, 6)
+    assert np.prod(1 + r) - 1 == pytest.approx(0.0, abs=1e-12) and (1 + r).min() >= 0
+
+
+@pytest.mark.parametrize("side", [1, -1])
+def test_daily_returns_compound_to_trade_net_with_costs_both_sides(side):
+    df = synth(900, seed=11)
+    params = dict(sg.DEFAULTS, exit_sr=0, trail=0, horizon=8)
+    tr = sg.Trader(df, ind.atr(df), params)
+    trades, _ = sg.simulate(tr, pd.Series(3.0 * side, index=df.index), 2)
+    for t in [x for x in trades if x["side"] == side][:8]:
+        r = bt.daily_returns(tr, [t], 0, len(df))
+        assert np.prod(1 + r) - 1 == pytest.approx(t["net"], abs=1e-9)
+
+
+def test_curves_end_at_total_return_and_funding_coverage_is_reported():
+    df = synth(1800, seed=4)
+    fund = pd.Series(0.0003, index=pd.date_range(pd.Timestamp("2022-01-01", tz="UTC"), df.index[-1], freq="D"))     # funding solo da 2022
+    r = bt.run(df, strategy="simple", funding=fund, include_reserved=True)
+    assert r["curves"]["t"][-1] == r["window"]["end"]
+    assert r["curves"]["strategy"][-1] == pytest.approx(r["portfolio"]["strategy"]["total_pct"], rel=1e-3, abs=0.01)
+    fc = r["funding_coverage"]
+    assert fc["from"] == "2022-01-01" and fc["days_without_data_in_window"] > 0
+    assert any("senza dato valgono 0" in n for n in r["notes"])
+
+
+def test_api_invalid_dates_and_cached_series_failures(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from app import main
+    storage.init(tmp_path / "bt2.sqlite")
+    storage.replace_bars("BTC", "1d", synth(1500, seed=7, start="2021-01-01"))
+    c = TestClient(main.app)
+    assert c.get("/api/aha/backtest/BTC?start=2026-13-45").status_code == 400
+    calls = []
+    def boom():
+        calls.append(1); raise RuntimeError("rete")
+    assert main._cached_series("BTC", "funding", 24, boom) is None and len(calls) == 1          # eccezione gestita, nessun 500
+    assert main._cached_series("BTC", "funding", 24, boom) is None and len(calls) == 1          # non si riprova subito
+    storage.save_series("funding:BTC", pd.Series([0.0001], index=[pd.Timestamp("2024-01-01", tz="UTC")]))
+    assert len(main._cached_series("BTC", "funding", 24, boom)) == 1                              # la serie vecchia resta valida
+    r1 = c.get("/api/aha/backtest/BTC?strategy=simple&include_reserved=1").json()
+    r2 = c.get("/api/aha/backtest/BTC?strategy=simple&include_reserved=1").json()
+    assert r1 == r2 and len(main._BT_CACHE) >= 1
+
+
+def test_zip_not_valid_is_skipped(monkeypatch):
+    from app.data import funding
+    class R:
+        status_code = 200
+        content = b"<html>proxy</html>"
+    monkeypatch.setattr(funding.requests, "get", lambda *a, **k: R())
+    assert funding._month("BTCUSDT", "2026-08") is None

@@ -82,7 +82,7 @@ def test_api_export_and_execution(tmp_path):
     items = c.get("/api/aha/export").json()["items"]
     assert len(items) == 1                                                            # la regola semplice non è presente in questa analisi
     it = items[0]
-    assert it["strategy"] == "aha"
+    assert it["strategy"] == "aha" and it["id"] == "aha-btc-2026-11-18" and it["title"].startswith("BTC: ")      # id e titolo di AHA invariati
     assert it["coins"] == ["bitcoin"] and it["side"] == "long" and it["targetPrice"] == 110 and it["stopPrice"] == 95
     assert it["confidence"] == pytest.approx(0.8) and it["reliability"] == "alta" and it["flags"] == ["on-chain", "sentiment"] and it["status"] == "attivo"
     # spento di default: l'anteprima non genera ordini e l'esecuzione simulata è rifiutata

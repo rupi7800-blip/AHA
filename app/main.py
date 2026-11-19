@@ -490,7 +490,8 @@ def aha_export(only_active: bool = False):
             rel = s.get("reliability") or {}
             score = {"alta": 80, "media": 55}.get(rel.get("grade"))       # per "bassa" o "non valutabile" non si dichiara nessuna fiducia
             items.append({
-                "id": f"aha-{strat}-{inst['id'].lower()}-{s['asof']}", "title": f"{inst['id']} · {label}: {s['action']}",
+                "id": f"aha-{inst['id'].lower()}-{s['asof']}" if strat == "aha" else f"aha-{strat}-{inst['id'].lower()}-{s['asof']}",
+                "title": f"{inst['id']}: {s['action']}" if strat == "aha" else f"{inst['id']} · {label}: {s['action']}",
                 "strategy": strat, "excerpt": rel.get("why"), "url": None,
                 "publishedAt": (a.get("meta") or {}).get("analyzed_at") or s["asof"],
                 "coins": [inst.get("cg") or inst["id"].lower()], "symbol": inst["id"],
@@ -577,9 +578,10 @@ def aha_track():
     """Registro in avanti dei segnali (paper): voci aperte e chiuse con l'esito calcolato con le stesse regole del backtest."""
     log = tracking.load()
     ch = tracking.chance(log, lambda c: storage.load_bars(c, "1d").iloc[:-1]) if log else {}
-    return pl.clean({"summary": tracking.summary(log), "by_strategy": tracking.summary_by_strategy(log), "chance": ch, "entries": log[-100:][::-1],
+    return pl.clean({"by_strategy": tracking.summary_by_strategy(log), "chance": ch, "entries": log[-100:][::-1],
                      "note": "Verifica in avanti: un trade alla volta per moneta, registrato prima di conoscerne l'esito. "
-                             "Servono almeno 30 operazioni chiuse per trarre conclusioni; confrontare sempre con il caso."})
+                             "Servono almeno 30 operazioni chiuse per trarre conclusioni; confrontare sempre con il caso. Le voci aperte nello stesso giorno su monete diverse "
+                             "sono correlate (un solo mercato): conta il numero di giorni distinti, non di voci."})
 
 
 # ------------------------------------------------------------------ backtest su tutta la storia
@@ -587,19 +589,29 @@ _BT_PARAMS = ("strategy", "start", "end", "side", "extended", "funding", "tune",
 
 
 def _cached_series(iid: str, key: str, hours: float, fetch):
-    """Serie in cache (SQLite): si riscarica solo se più vecchia di `hours`."""
+    """Serie in cache (SQLite). Si riscarica se più vecchia di `hours`; dopo un fallimento si riprova non prima di un'ora
+    (la serie precedente, se c'è, resta valida) e un'eccezione del download non diventa un errore 500."""
+    import pandas as pd
     info = storage.fetch_info(iid, key)
     ser = storage.load_series(f"{key}:{iid}")
-    fresh = info and (__import__("pandas").Timestamp.now("UTC") - __import__("pandas").Timestamp(info["fetched_at"])).total_seconds() < hours * 3600
-    if len(ser) and fresh:
-        return ser
-    res = fetch()
+    if info:
+        age_h = (pd.Timestamp.now("UTC") - pd.Timestamp(info["fetched_at"])).total_seconds() / 3600
+        if (info["status"] == "ok" and len(ser) and age_h < hours) or (info["status"] != "ok" and age_h < 1):
+            return ser if len(ser) else None
+    try:
+        res = fetch()
+    except Exception as e:
+        storage.log_fetch(iid, key, "-", "errore", "-", str(e)[:200])
+        return ser if len(ser) else None
     if res is not None and len(res):
         storage.save_series(f"{key}:{iid}", res)
         storage.log_fetch(iid, key, "-", "ok", "-", "")
         return res
     storage.log_fetch(iid, key, "-", "errore", "-", "serie non disponibile")
     return ser if len(ser) else None
+
+
+_BT_CACHE: dict = {}
 
 
 @app.get("/api/aha/backtest/{iid}")
@@ -613,9 +625,13 @@ def aha_backtest(iid: str, request: Request):
     strategy, side = q.get("strategy", "aha"), q.get("side", "all")
     if strategy not in ("aha", "simple") or side not in ("all", "long", "short"):
         raise HTTPException(400, "strategy: aha|simple; side: all|long|short")
+    import datetime as _dt
     for k in ("start", "end"):
-        if q.get(k) and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", q[k]):
-            raise HTTPException(400, f"{k}: formato YYYY-MM-DD")
+        if q.get(k):
+            try:
+                _dt.datetime.strptime(q[k], "%Y-%m-%d")
+            except ValueError:
+                raise HTTPException(400, f"{k}: data non valida (formato YYYY-MM-DD)")
     flag = lambda k, d="0": q.get(k, d) in ("1", "true")
     inst = pl.instrument(iid)
     if not inst:
@@ -627,11 +643,20 @@ def aha_backtest(iid: str, request: Request):
     if flag("extended"):
         cm = _cached_series(iid, "price_cm", 24, lambda: (lambda r: r.df["close"] if r.status == "ok" else None)(hmod.coinmetrics_close(inst.get("cm") or iid.lower())))
         df = hmod.extend_bars(df, cm)
-    fund = _cached_series(iid, "funding", 24 * 7, lambda: fmod.daily_funding(inst["symbol"])) if flag("funding") else None
-    res = backtester.run(df, oc, fg, strategy=strategy, overrides=over, start=q.get("start"), end=q.get("end"), side=side,
-                         tune_params=flag("tune", "1"), funding=fund, include_reserved=flag("include_reserved"))
+    first_real = str((df.index[~df["synthetic"].values][0] if "synthetic" in df else df.index[0]).tz_localize(None).to_period("M"))
+    fund = _cached_series(iid, "funding", 24 * 7, lambda: fmod.daily_funding(inst["symbol"], start=max("2019-09", first_real))) if flag("funding") else None
+    key = (iid, str(df.index[-1]), str(sorted(q.items())))
+    res = _BT_CACHE.get(key)
+    if res is None:
+        res = backtester.run(df, oc, fg, strategy=strategy, overrides=over, start=q.get("start"), end=q.get("end"), side=side,
+                             tune_params=flag("tune", "1"), funding=fund, include_reserved=flag("include_reserved"))
+        if not res.get("error"):
+            if len(_BT_CACHE) >= 32:
+                _BT_CACHE.pop(next(iter(_BT_CACHE)))
+            _BT_CACHE[key] = res
     if res.get("error"):
         raise HTTPException(422, res["error"])
+    res = dict(res)
     res["extended_requested"] = flag("extended")
     res["extended_available"] = bool("synthetic" in df and df["synthetic"].any())
     return pl.clean(res)

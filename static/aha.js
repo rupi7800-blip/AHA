@@ -270,15 +270,16 @@ async function load() {
 
 async function loadTrack() {
   try {
-    const d = await api("/api/aha/track"), s = d.summary, el = $("#track");
-    if (!s.n_logged) { el.textContent = "Nessun segnale ancora registrato: appena ne compare uno attivo viene salvato qui."; return; }
-    const a = s.all, c = d.chance || {};
-    const cz = ["long", "short"].filter(k => c[k]).map(k => `${k} ${R2(c[k].expectancy_r)}`).join(" · ");
-    el.innerHTML = `<p>${s.n_logged} registrati · ${s.n_open} aperti · ${s.n_closed} chiusi${a ? ` · aspettativa ${R2(a.expectancy_r)} (${a.n} chiusi, vincite ${pct(a.win_rate)})` : ""}</p>
-      ${cz ? `<p>Il “caso” nello stesso periodo (stesse regole, ingresso a ogni barra): ${cz}.</p>` : ""}
-      <p class="muted">${esc(d.note || "")}</p>
-      <div class="tablewrap"><table><thead><tr><th>Data</th><th>Moneta</th><th>Verso</th><th>Stato</th><th>Esito</th></tr></thead><tbody>` +
-      d.entries.slice(0, 15).map(e => `<tr><td>${esc(e.asof)}</td><td>${esc(e.coin)}</td><td>${esc(e.side)}</td><td>${esc(e.status)}</td>
+    const d = await api("/api/aha/track"), el = $("#track"), bs = d.by_strategy || {};
+    const names = {aha: "AHA (voti + regime)", simple: "Regola semplice"};
+    if (!Object.values(bs).some(s => s.n_logged)) { el.textContent = "Nessun segnale ancora registrato: appena ne compare uno attivo viene salvato qui."; return; }
+    const c = d.chance || {}, cz = ["long", "short"].filter(k => c[k]).map(k => `${k} ${R2(c[k].expectancy_r)}`).join(" · ");
+    el.innerHTML = Object.entries(bs).filter(([k, s]) => s.n_logged).map(([k, s]) => { const a = s.all;
+        return `<p><b>${names[k]}</b>: ${s.n_logged} registrati (su ${s.distinct_days_logged} giorni distinti) · ${s.n_open} aperti · ${s.n_closed} chiusi${a ? ` · aspettativa ${R2(a.expectancy_r)} (${a.n} chiusi, vincite ${pct(a.win_rate)})` : ""}</p>`; }).join("") +
+      (cz ? `<p>Il “caso” nello stesso periodo (stesse regole, ingresso a ogni barra): ${cz}.</p>` : "") +
+      `<p class="muted">${esc(d.note || "")}</p>
+      <div class="tablewrap"><table><thead><tr><th>Data</th><th>Moneta</th><th>Strategia</th><th>Verso</th><th>Stato</th><th>Esito</th></tr></thead><tbody>` +
+      d.entries.slice(0, 15).map(e => `<tr><td>${esc(e.asof)}</td><td>${esc(e.coin)}</td><td>${esc(names[e.strategy || "aha"] || "")}</td><td>${esc(e.side)}</td><td>${esc(e.status)}</td>
         <td>${e.status === "chiuso" ? `${R2(e.r)} (${esc(e.exit)})` : esc(e.why || "–")}</td></tr>`).join("") + "</tbody></table></div>";
   } catch (e) {}
 }

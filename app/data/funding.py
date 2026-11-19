@@ -21,8 +21,11 @@ def _month(symbol: str, ym: str) -> pd.DataFrame | None:
         return None
     if r.status_code != 200:
         return None
-    z = zipfile.ZipFile(io.BytesIO(r.content))
-    df = pd.read_csv(z.open(z.namelist()[0]))
+    try:
+        z = zipfile.ZipFile(io.BytesIO(r.content))
+        df = pd.read_csv(z.open(z.namelist()[0]))
+    except Exception:                      # risposta non valida (es. pagina del proxy): mese saltato
+        return None
     return df if len(df) else None
 
 

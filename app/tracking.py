@@ -74,7 +74,8 @@ def summary_by_strategy(log: list[dict]) -> dict:
 
 def summary(log: list[dict]) -> dict:
     closed = [e for e in log if e["status"] == "chiuso"]
-    out = {"n_logged": len(log), "n_open": sum(e["status"] == "aperto" for e in log), "n_closed": len(closed)}
+    out = {"n_logged": len(log), "n_open": sum(e["status"] == "aperto" for e in log), "n_closed": len(closed),
+           "distinct_days_logged": len({e["asof"] for e in log if "asof" in e}), "distinct_days_closed": len({e["asof"] for e in closed if "asof" in e})}
     for side in ("long", "short", "all"):
         xs = [e for e in closed if side == "all" or e["side"] == side]
         if xs:

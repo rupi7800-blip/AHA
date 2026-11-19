@@ -21,6 +21,10 @@ specializzata sulle criptovalute. Web app leggera (FastAPI + JS vanilla, install
 - **Regola semplice**: sopra l'EMA200 long, sotto short, senza indicatori; stesso stop iniziale da livelli e stesso stop mobile.
 Ogni moneta mostra entrambe, ciascuna con la propria affidabilità calcolata sul pool; il registro in avanti le segue separatamente.
 La regola semplice è stata aggiunta *dopo* aver visto che nel benchmark faceva meglio: non è una scelta fatta in campione.
+Sul pool, fuori campione: regola semplice long +0,48R contro un caso di +0,38R (p=0,28), short +0,10R contro +0,03R (p=0,31); AHA long +0,40R
+contro +0,34R (p=0,37), short +0,13R contro +0,04R (p=0,31). Entrambe: affidabilità **bassa**, praticamente equivalenti.
+Attenzione al registro in avanti: la regola semplice è quasi sempre "in posizione" e le voci aperte lo stesso giorno su monete diverse
+sono correlate (un solo mercato): conta il numero di giorni distinti, non di voci.
 
 ## Backtest sulla storia completa (`/api/aha/backtest/{id}`, riquadro "Backtest" nell'interfaccia)
 
