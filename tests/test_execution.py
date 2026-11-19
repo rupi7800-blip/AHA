@@ -80,8 +80,9 @@ def test_api_export_and_execution(tmp_path):
     storage.kv_set("analysis:BTC", a)
     c = TestClient(app)
     items = c.get("/api/aha/export").json()["items"]
-    assert len(items) == 1
+    assert len(items) == 1                                                            # la regola semplice non è presente in questa analisi
     it = items[0]
+    assert it["strategy"] == "aha"
     assert it["coins"] == ["bitcoin"] and it["side"] == "long" and it["targetPrice"] == 110 and it["stopPrice"] == 95
     assert it["confidence"] == pytest.approx(0.8) and it["reliability"] == "alta" and it["flags"] == ["on-chain", "sentiment"] and it["status"] == "attivo"
     # spento di default: l'anteprima non genera ordini e l'esecuzione simulata è rifiutata

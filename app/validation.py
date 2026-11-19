@@ -138,11 +138,13 @@ def grade(r: dict, p_holm: float | None) -> tuple[str, str]:
     return "bassa", f"aspettativa {e:+.2f}R, p={p:.3f}: indizi troppo deboli o troppo pochi dati per fidarsi"
 
 
-def run(analyses: dict[str, dict], window: str = "oos") -> dict:
+def run(analyses: dict[str, dict], window: str = "oos", key: str | None = None) -> dict:
     """analyses: {id: analisi con `aha` (con _trades, _outcomes, history)}. Restituisce la validazione del pool."""
     coins = {}
     for cid, a in analyses.items():
         s = (a or {}).get("aha") or {}
+        if key:                                  # strategia alternativa (es. "simple") dentro l'analisi
+            s = s.get(key) or {}
         if not s.get("_trades") or not s.get("_outcomes"):
             continue
         h = s["history"]

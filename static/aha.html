@@ -25,6 +25,8 @@
 <main>
   <section class="card" id="signal"><div class="muted">Caricamento…</div></section>
 
+  <section class="card" id="simple"></section>
+
   <details class="card" id="controls">
     <summary>Parametri degli indicatori <span class="muted" id="ctl-hint"></span></summary>
     <p class="muted small">Per ogni indicatore AHA sceglie i parametri migliori sul primo 60% della storia. Cambiandone uno lo imposti tu:
@@ -42,6 +44,26 @@
     </div>
     <div id="chart"></div>
     <div class="muted small" id="chart-note"></div>
+  </section>
+
+  <section class="card" id="bt">
+    <h2>Backtest sulla storia completa</h2>
+    <p class="muted small">Prova una strategia su tutti i dati disponibili della moneta. Con “storico esteso” si parte dalla nascita (chiusure CoinMetrics) invece che dalla
+      quotazione su Binance: il tratto ricostruito è approssimato e viene mostrato a parte.</p>
+    <div class="fields">
+      <label>Strategia<select id="bt-strategy"><option value="simple">Regola semplice</option><option value="aha">AHA (voti + regime)</option></select></label>
+      <label>Verso<select id="bt-side"><option value="all">Long e short</option><option value="long">Solo long (spot)</option><option value="short">Solo short</option></select></label>
+      <label>Dal<input type="date" id="bt-start"></label>
+      <label>Al<input type="date" id="bt-end"></label>
+    </div>
+    <div class="row" style="margin:8px 0">
+      <label class="small"><input type="checkbox" id="bt-ext" checked> storico esteso dalla nascita</label>
+      <label class="small"><input type="checkbox" id="bt-fund"> funding perpetual</label>
+      <label class="small"><input type="checkbox" id="bt-tune" checked> parametri automatici (AHA)</label>
+      <label class="small"><input type="checkbox" id="bt-res"> includi periodo riservato</label>
+      <button class="btn" id="bt-run">Esegui backtest</button>
+    </div>
+    <div id="bt-out" class="small muted">Scegli le opzioni e premi “Esegui backtest”. Valgono anche i parametri modificati in “Parametri degli indicatori”.</div>
   </section>
 
   <section class="card">

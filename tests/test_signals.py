@@ -213,9 +213,11 @@ def test_glassnode_partial_and_unsupported(monkeypatch):
             raise RuntimeError("401 Client Error")
         return type("R", (), {"json": lambda self: [{"t": 1700000000, "v": 1.2}]})()
     monkeypatch.setattr(onchain, "http_get", fake_get)
-    r = onchain.Glassnode().metrics("btc")
+    r = onchain.Glassnode(key="test").metrics("btc")
     assert r.status == "ok" and "nvt" in r.df and "sopr" not in r.df and "sopr:" in r.message
-    assert onchain.Glassnode().metrics("sol").status == "errore"
+    assert onchain.Glassnode(key="test").metrics("sol").status == "errore"
+    off = onchain.Glassnode(key="")
+    assert not off.enabled and "a pagamento" in off.metrics("btc").message
 
 
 def test_api_chart_endpoint(tmp_path):
@@ -232,3 +234,21 @@ def test_api_chart_endpoint(tmp_path):
     assert c.get("/api/").status_code in (404, 405, 200)
     assert c.get("/").status_code == 200 and "AHA" in c.get("/").text
     assert c.get("/classic").status_code == 200
+
+
+def test_simple_rule_block_and_pool_validation_key():
+    from app import validation as V, tracking
+    df = synth(1500, seed=9)
+    r = sg.build_signal(df, holdout_start=str(df.index[1300].date()))
+    s = r["simple"]
+    assert {"history", "direction", "action", "name", "rule", "_trades", "_outcomes"} <= set(s)
+    # la regola semplice: verso = segno di (chiusura - EMA200); nessun voto di indicatori
+    from app.analysis import indicators as ind
+    expect = 1 if df["close"].iloc[-1] > ind.ema(df["close"], 200).iloc[-1] else -1
+    assert s["direction"] == expect or s["action"] == "ATTENDI"
+    assert V.run({"X": {"aha": r}}, key="simple")["n_coins"] == 1
+    # il registro in avanti tiene le due strategie separate
+    log = [{"coin": "X", "strategy": "simple", "status": "chiuso", "r": 1.0, "net": 0.05, "side": "long"},
+           {"coin": "X", "strategy": "aha", "status": "aperto", "side": "long"}]
+    by = tracking.summary_by_strategy(log)
+    assert by["simple"]["n_closed"] == 1 and by["aha"]["n_open"] == 1

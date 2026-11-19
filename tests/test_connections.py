@@ -83,4 +83,4 @@ def test_coinmetrics_skips_unavailable_metric(monkeypatch):
 def test_glassnode_without_key_is_explicit(monkeypatch):
     monkeypatch.delenv("GLASSNODE_API_KEY", raising=False)
     r = onchain.Glassnode().metrics()
-    assert r.status == "errore" and "chiave" in r.message
+    assert r.status == "errore" and "a pagamento" in r.message

@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import pipeline as pl
-from . import execution, signals, storage, tracking, validation
+from . import backtester, execution, signals, storage, tracking, validation
 from .analysis import indicators as ind
 from .backtest import backtest_rule
 from .scanner import OPPORTUNITY_TYPES, RULES, RULES_BY_ID
@@ -194,7 +194,7 @@ def asset(iid: str):
     a["spillover"] = (g.get("spillover") or {}).get(a["meta"]["name"])
     a["prediction_log"] = storage.predictions(iid)[:60]
     if isinstance(a.get("aha"), dict):
-        a["aha"] = {k: v for k, v in a["aha"].items() if not k.startswith("_")}
+        a["aha"] = _public(a["aha"])
     return a
 
 
@@ -364,6 +364,21 @@ _FLAGS = {"exit_sr", "trail", "regime", "near_level"}
 _NONNEG = {"stop_buf", "tp_buf", "cost_bps", "slippage_bps", "stop_slip_bps", "w_trend", "w_mr", "w_chain"}
 
 
+def _public(sig: dict) -> dict:
+    """Toglie le chiavi interne (_trades, _outcomes) dal segnale e dal blocco della regola semplice."""
+    out = {k: v for k, v in sig.items() if not k.startswith("_")}
+    if isinstance(out.get("simple"), dict):
+        out["simple"] = {k: v for k, v in out["simple"].items() if not k.startswith("_")}
+    return out
+
+
+def _attach_both(sig: dict, default_params: bool) -> dict:
+    validation.attach(sig, storage.kv_get("aha_validation"), default_params=default_params)
+    if isinstance(sig.get("simple"), dict):
+        validation.attach(sig["simple"], storage.kv_get("aha_validation_simple"), default_params=default_params)
+    return sig
+
+
 def _overrides(request: Request, skip=("days",)) -> dict:
     import math
     over = {}
@@ -394,8 +409,8 @@ def aha_signal(iid: str, request: Request):
     sostituiscono la ricerca automatica: servono ai grafici interattivi."""
     df, oc, fg = _aha_inputs(iid)
     over = _overrides(request)
-    sig = validation.attach(signals.build_signal(df, oc, fg, overrides=over), storage.kv_get("aha_validation"), default_params=not over)
-    return pl.clean({k: v for k, v in sig.items() if not k.startswith("_")})
+    sig = _attach_both(signals.build_signal(df, oc, fg, overrides=over), default_params=not over)
+    return pl.clean(_public(sig))
 
 
 @app.get("/api/aha/chart/{iid}")
@@ -405,8 +420,7 @@ def aha_chart(iid: str, request: Request, days: int = 365):
     days = max(60, min(days, 1500))
     df, oc, fg = _aha_inputs(iid)
     over = _overrides(request)
-    sig = validation.attach(signals.build_signal(df, oc, fg, overrides=over), storage.kv_get("aha_validation"), default_params=not over)
-    sig = {k: v for k, v in sig.items() if not k.startswith("_")}
+    sig = _public(_attach_both(signals.build_signal(df, oc, fg, overrides=over), default_params=not over))
     if "params" not in sig:
         raise HTTPException(422, sig.get("why", "dati insufficienti"))
     p = sig["params"]
@@ -450,7 +464,8 @@ def aha_signals(only_active: bool = False):
             "action", "side", "entry", "stop_loss", "take_profit", "basis_stop", "basis_tp", "horizon_days", "risk_reward",
             "score", "asof", "positioning", "skipped_reason")},
             "reliability": s.get("reliability"), "reliability_by_side": s.get("reliability_by_side"),
-            "onchain_used": s.get("onchain_used")})
+            "onchain_used": s.get("onchain_used"),
+            "simple": {k: (s.get("simple") or {}).get(k) for k in ("action", "side", "entry", "stop_loss", "basis_stop", "reliability", "reliability_by_side")}})
     order = {"alta": 0, "media": 1, "bassa": 2}
     rows.sort(key=lambda r: (not r["side"], order.get((r["reliability"] or {}).get("grade"), 3)))
     return {"signals": rows}
@@ -465,27 +480,28 @@ def aha_export(only_active: bool = False):
     items = []
     for inst in pl.instruments():
         a = storage.kv_get(f"analysis:{inst['id']}") or {}
-        s = a.get("aha")
-        if not s or not s.get("price"):
-            continue
-        side = s.get("side")
-        if only_active and not side:
-            continue
-        rel = s.get("reliability") or {}
-        score = {"alta": 80, "media": 55}.get(rel.get("grade"))       # per "bassa" o "non valutabile" non si dichiara nessuna fiducia
-        items.append({
-            "id": f"aha-{inst['id'].lower()}-{s['asof']}", "title": f"{inst['id']}: {s['action']}",
-            "excerpt": rel.get("why"), "url": None,
-            "publishedAt": (a.get("meta") or {}).get("analyzed_at") or s["asof"],
-            "coins": [inst.get("cg") or inst["id"].lower()], "symbol": inst["id"],
-            "side": side or "neutral", "price": s["price"],
-            "targetPrice": s.get("take_profit"), "stopPrice": s.get("stop_loss"),
-            "confidence": None if score is None else score / 100,
-            "expectancyR": rel.get("expectancy_r"), "nPool": rel.get("n"), "reliability": rel.get("grade"),
-            "basisStop": s.get("basis_stop"), "basisTarget": s.get("basis_tp"), "riskReward": s.get("risk_reward"),
-            "horizonDays": s.get("horizon_days"),
-            "flags": sorted({"on-chain" if k in ("mvrv", "exchange_flow", "sopr", "nvt") else "sentiment" for k in s.get("onchain_used", [])}),
-            "lang": "it", "status": "attivo" if side else "in attesa"})
+        base = a.get("aha") or {}
+        for strat, s, label in (("aha", base, "AHA"), ("simple", base.get("simple") or {}, "Regola semplice")):
+            if not s or not s.get("price"):
+                continue
+            side = s.get("side")
+            if only_active and not side:
+                continue
+            rel = s.get("reliability") or {}
+            score = {"alta": 80, "media": 55}.get(rel.get("grade"))       # per "bassa" o "non valutabile" non si dichiara nessuna fiducia
+            items.append({
+                "id": f"aha-{strat}-{inst['id'].lower()}-{s['asof']}", "title": f"{inst['id']} · {label}: {s['action']}",
+                "strategy": strat, "excerpt": rel.get("why"), "url": None,
+                "publishedAt": (a.get("meta") or {}).get("analyzed_at") or s["asof"],
+                "coins": [inst.get("cg") or inst["id"].lower()], "symbol": inst["id"],
+                "side": side or "neutral", "price": s["price"],
+                "targetPrice": s.get("take_profit"), "stopPrice": s.get("stop_loss"),
+                "confidence": None if score is None else score / 100,
+                "expectancyR": rel.get("expectancy_r"), "nPool": rel.get("n"), "reliability": rel.get("grade"),
+                "basisStop": s.get("basis_stop"), "basisTarget": s.get("basis_tp"), "riskReward": s.get("risk_reward"),
+                "horizonDays": s.get("horizon_days"),
+                "flags": sorted({"on-chain" if k in ("mvrv", "exchange_flow", "sopr", "nvt") else "sentiment" for k in base.get("onchain_used", [])}) if strat == "aha" else ["trend"],
+                "lang": "it", "status": "attivo" if side else "in attesa"})
     return {"generatedAt": storage.utcnow(), "items": items}
 
 
@@ -561,6 +577,61 @@ def aha_track():
     """Registro in avanti dei segnali (paper): voci aperte e chiuse con l'esito calcolato con le stesse regole del backtest."""
     log = tracking.load()
     ch = tracking.chance(log, lambda c: storage.load_bars(c, "1d").iloc[:-1]) if log else {}
-    return pl.clean({"summary": tracking.summary(log), "chance": ch, "entries": log[-100:][::-1],
+    return pl.clean({"summary": tracking.summary(log), "by_strategy": tracking.summary_by_strategy(log), "chance": ch, "entries": log[-100:][::-1],
                      "note": "Verifica in avanti: un trade alla volta per moneta, registrato prima di conoscerne l'esito. "
                              "Servono almeno 30 operazioni chiuse per trarre conclusioni; confrontare sempre con il caso."})
+
+
+# ------------------------------------------------------------------ backtest su tutta la storia
+_BT_PARAMS = ("strategy", "start", "end", "side", "extended", "funding", "tune", "include_reserved")
+
+
+def _cached_series(iid: str, key: str, hours: float, fetch):
+    """Serie in cache (SQLite): si riscarica solo se più vecchia di `hours`."""
+    info = storage.fetch_info(iid, key)
+    ser = storage.load_series(f"{key}:{iid}")
+    fresh = info and (__import__("pandas").Timestamp.now("UTC") - __import__("pandas").Timestamp(info["fetched_at"])).total_seconds() < hours * 3600
+    if len(ser) and fresh:
+        return ser
+    res = fetch()
+    if res is not None and len(res):
+        storage.save_series(f"{key}:{iid}", res)
+        storage.log_fetch(iid, key, "-", "ok", "-", "")
+        return res
+    storage.log_fetch(iid, key, "-", "errore", "-", "serie non disponibile")
+    return ser if len(ser) else None
+
+
+@app.get("/api/aha/backtest/{iid}")
+def aha_backtest(iid: str, request: Request):
+    """Backtest su tutta la storia disponibile. Query: strategy=aha|simple, start/end=YYYY-MM-DD, side=all|long|short,
+    extended=1 (chiusure dalla nascita della moneta, CoinMetrics), funding=1 (funding vero dei perpetual),
+    tune=1 (parametri scelti sul primo 60% della finestra), include_reserved=1 (include il periodo riservato dal 2026-09-10),
+    più gli stessi parametri della strategia di /api/aha/signal."""
+    import re
+    q = request.query_params
+    strategy, side = q.get("strategy", "aha"), q.get("side", "all")
+    if strategy not in ("aha", "simple") or side not in ("all", "long", "short"):
+        raise HTTPException(400, "strategy: aha|simple; side: all|long|short")
+    for k in ("start", "end"):
+        if q.get(k) and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", q[k]):
+            raise HTTPException(400, f"{k}: formato YYYY-MM-DD")
+    flag = lambda k, d="0": q.get(k, d) in ("1", "true")
+    inst = pl.instrument(iid)
+    if not inst:
+        raise HTTPException(404, "strumento sconosciuto")
+    over = _overrides(request, skip=_BT_PARAMS)
+    df, oc, fg = _aha_inputs(iid)
+    import pandas as pd
+    from .data import funding as fmod, history as hmod
+    if flag("extended"):
+        cm = _cached_series(iid, "price_cm", 24, lambda: (lambda r: r.df["close"] if r.status == "ok" else None)(hmod.coinmetrics_close(inst.get("cm") or iid.lower())))
+        df = hmod.extend_bars(df, cm)
+    fund = _cached_series(iid, "funding", 24 * 7, lambda: fmod.daily_funding(inst["symbol"])) if flag("funding") else None
+    res = backtester.run(df, oc, fg, strategy=strategy, overrides=over, start=q.get("start"), end=q.get("end"), side=side,
+                         tune_params=flag("tune", "1"), funding=fund, include_reserved=flag("include_reserved"))
+    if res.get("error"):
+        raise HTTPException(422, res["error"])
+    res["extended_requested"] = flag("extended")
+    res["extended_available"] = bool("synthetic" in df and df["synthetic"].any())
+    return pl.clean(res)

@@ -85,6 +85,77 @@ function renderSignal(s) {
     ${miss}<p class="muted small">${esc(s.note)}</p>`;
 }
 
+function renderSimple(s) {
+  const el = $("#simple");
+  if (!s) { el.innerHTML = ""; return; }
+  const side = s.side, rel = s.reliability || {}, h = s.history, oos = h.out_of_sample, rnd = h.random_out_of_sample || {};
+  const cls = side === "long" ? "long" : side === "short" ? "short" : "wait";
+  const lv = side ? `<div class="kv">
+      <div><span>Ingresso</span><b>${price(s.entry)}</b></div>
+      <div><span>Stop iniziale (${fmt(s.risk_pct, 1)}%)</span><b style="color:var(--dn)">${price(s.stop_loss)}</b><small class="muted">${esc(s.basis_stop || "")}</small></div>
+      <div><span>Livello indicativo</span><b style="color:var(--up)">${price(s.take_profit)}</b><small class="muted">${esc(s.basis_tp || "")}</small></div>
+      <div><span>Uscita</span><b>stop mobile</b><small class="muted">max ${s.horizon_days} gg</small></div></div>` : `<p class="muted">Nessun ingresso utile oggi${s.skipped_reason ? `: ${esc(s.skipped_reason)}` : ""}.</p>`;
+  const bySide = s.reliability_by_side && Object.keys(s.reliability_by_side).length
+    ? Object.entries(s.reliability_by_side).map(([k, v]) => `<span class="chip">${k}: <b class="${GRADE(v.grade)}">${esc(v.grade)}</b> (${v.n} op., ${R2(v.expectancy_r)})</span>`).join("") : "";
+  const sel = side || "all", chance = rnd[side || "long"];
+  $("#simple").innerHTML = `<div class="row between"><div><b>Regola semplice</b> <span class="badge ${cls}">${esc(s.action)}</span></div>
+      <div title="${esc(rel.scope || "")}">Affidabilità <b class="${GRADE(rel.grade)}">${esc(rel.grade || "–")}</b></div></div>
+    <p class="muted small">${esc(s.rule || "")}</p>${lv}
+    <p class="small">${esc(rel.why || "")}</p>${bySide ? `<div class="chips">${bySide}</div>` : ""}
+    ${statLine(oos[sel], sel === "all" ? "Su questa moneta, fuori campione" : "Su questa moneta, " + sel + ", fuori campione")}
+    ${chance && chance.n ? `<p class="small muted">Il “caso”: ${R2(chance.expectancy_r)} per operazione con le stesse uscite.</p>` : ""}`;
+}
+
+// ---------------------------------------------------------------- backtest
+const money = x => x == null ? "–" : Math.abs(x) >= 1e5 ? Number(x).toExponential(2).replace("e+", "×10^") + "%" : (x >= 0 ? "+" : "") + Number(x).toLocaleString("it-IT", {maximumFractionDigits: 0}) + "%";
+const pf1 = x => x == null ? "–" : (x >= 0 ? "+" : "") + Number(x).toFixed(1) + "%";
+
+async function runBacktest() {
+  const out = $("#bt-out"), btn = $("#bt-run");
+  const q = new URLSearchParams({strategy: $("#bt-strategy").value, side: $("#bt-side").value, extended: $("#bt-ext").checked ? 1 : 0,
+    funding: $("#bt-fund").checked ? 1 : 0, tune: $("#bt-tune").checked ? 1 : 0, include_reserved: $("#bt-res").checked ? 1 : 0});
+  if ($("#bt-start").value) q.set("start", $("#bt-start").value);
+  if ($("#bt-end").value) q.set("end", $("#bt-end").value);
+  for (const [k, v] of Object.entries(state.dirty)) q.set(k, v);
+  btn.disabled = true; out.innerHTML = "<span class='muted'>Calcolo (il primo funding o storico esteso scarica dati: qualche secondo)…</span>";
+  try {
+    const r = await api(`/api/aha/backtest/${state.coin}?${q}`);
+    const p = r.portfolio, S = p.strategy, B = p.buy_hold, w = r.window;
+    const row = (n, a) => `<tr><td>${n}</td><td>${money(a.total_pct)}</td><td>${pf1(a.cagr_pct)}</td><td>${fmt(a.vol_pct, 0)}%</td><td>${a.sharpe == null ? "–" : a.sharpe.toFixed(2)}</td><td>${fmt(a.max_dd_pct, 0)}%</td></tr>`;
+    out.innerHTML = `<p class="small">Dal <b>${esc(w.start)}</b> al <b>${esc(w.end)}</b> (${fmt(w.days, 0)} giorni). Parametri scelti sul periodo fino al ${esc(w.split)};
+        dati reali Binance dal ${esc(w.first_real_bar || "–")}${w.synthetic_bars_in_window ? `; prima: ${fmt(w.synthetic_bars_in_window, 0)} barre ricostruite dalle sole chiusure` : ""}.
+        ${w.reserved_included ? "<b>Periodo riservato incluso.</b>" : ""}</p>
+      <div class="tablewrap"><table><thead><tr><th></th><th>Totale</th><th>Annuo</th><th>Volatilità</th><th>Sharpe</th><th>Drawdown max</th></tr></thead><tbody>
+        ${row("Strategia" + (r.funding_used ? " (con funding)" : ""), S)}${p.strategy_no_funding ? row("Strategia, funding ignorato", p.strategy_no_funding) : ""}${row("Buy &amp; hold", B)}</tbody></table></div>
+      <p class="muted small">In posizione il ${fmt(p.exposure_pct, 0)}% dei giorni. Capitale 100% investito durante un trade, senza leva.</p>
+      <div id="bt-chart"></div>
+      ${statLine(r.stats[$("#bt-side").value === "all" ? "all" : $("#bt-side").value], "Tutte le operazioni")}
+      ${statLine(r.in_sample.all, "In campione (parametri scelti qui)")}${statLine(r.out_of_sample.all, "Fuori campione")}
+      ${w.synthetic_bars_in_window ? statLine(r.synthetic_period.all, "Tratto ricostruito (approssimato)") + statLine(r.real_period.all, "Tratto con dati reali") : ""}
+      <p class="muted small"><b>Il “caso”</b> (fuori campione, entrare a ogni barra con le stesse uscite): long ${R2((r.chance.long || {}).expectancy_r)}, short ${R2((r.chance.short || {}).expectancy_r)} per operazione.</p>
+      <h3 class="small muted" style="margin:10px 0 2px">Per anno (attenzione: gli anni iniziali dominano i totali)</h3>
+      <div class="tablewrap"><table><thead><tr><th>Anno</th><th>Op.</th><th>Vincite</th><th>Media</th><th>R</th><th>Somma</th></tr></thead><tbody>
+        ${r.yearly.map(y => `<tr><td>${y.year}</td><td>${y.n}</td><td>${pct(y.win_rate)}</td><td>${P2(y.expectancy_pct)}</td><td>${R2(y.expectancy_r)}</td><td>${money(y.sum_pct)}</td></tr>`).join("")}</tbody></table></div>
+      <h3 class="small muted" style="margin:10px 0 2px">Ultime operazioni (${r.n_trades} in tutto)</h3>
+      <div class="tablewrap"><table><thead><tr><th>Data</th><th>Verso</th><th>Barre</th><th>Uscita</th><th>Netto</th><th>R</th></tr></thead><tbody>
+        ${r.trades.slice(0, 30).map(t => `<tr><td>${esc(t.date)}${t.synthetic ? "*" : ""}</td><td>${esc(t.side)}</td><td>${t.bars}</td><td>${esc(t.exit_reason)}</td><td>${P2(t.net_pct)}</td><td>${R2(t.r)}</td></tr>`).join("")}</tbody></table></div>
+      <p class="muted small">* tratto ricostruito dalle sole chiusure. ${r.notes.map(esc).join(" ")}</p>`;
+    const c = r.curves, tx = css("--tx"), mut = css("--mut"), grid = css("--grid"), acc = css("--acc"), warn = css("--warn"), dn = css("--dn");
+    const lv = a => a.map(x => 100 + x);
+    const shapes = [[w.split, mut], [w.first_real_bar, warn]].filter(x => x[0]).map(([d, col]) => ({type: "line", xref: "x", yref: "paper", x0: d, x1: d, y0: 0, y1: 1, line: {color: col, width: 1, dash: "dot"}}));
+    Plotly.react("bt-chart", [
+      {x: c.t, y: lv(c.strategy), name: "Strategia", type: "scatter", mode: "lines", line: {color: acc, width: 1.6}, xaxis: "x", yaxis: "y"},
+      {x: c.t, y: lv(c.buy_hold), name: "Buy & hold", type: "scatter", mode: "lines", line: {color: warn, width: 1.2}, xaxis: "x", yaxis: "y"},
+      {x: c.t, y: c.drawdown, name: "Drawdown strategia %", type: "scatter", mode: "lines", line: {color: dn, width: 1}, fill: "tozeroy", xaxis: "x", yaxis: "y2"}],
+      {height: 380, margin: {l: 56, r: 12, t: 10, b: 28}, paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", font: {color: tx, size: 11}, dragmode: "pan",
+        legend: {orientation: "h", y: 1.08}, shapes, hovermode: "x unified",
+        xaxis: {gridcolor: grid, anchor: "y2"}, yaxis: {type: "log", domain: [0.3, 1], gridcolor: grid, title: {text: "capitale (100 = inizio, scala log)", font: {size: 10}}},
+        yaxis2: {domain: [0, 0.22], gridcolor: grid, fixedrange: true}},
+      {displayModeBar: false, responsive: true});
+  } catch (e) { out.innerHTML = `<span class="err">${esc(e.message)}</span>`; }
+  btn.disabled = false;
+}
+
 // ---------------------------------------------------------------- parametri
 function renderControls(p) {
   const body = $("#ctl-body");
@@ -188,7 +259,7 @@ async function load() {
   try {
     const d = await api(`/api/aha/chart/${state.coin}?${query()}`);
     if (my !== state.req) return;
-    renderSignal(d.signal); renderControls(d.signal.params || {}); renderChart(d);
+    renderSignal(d.signal); renderSimple(d.signal.simple); renderControls(d.signal.params || {}); renderChart(d);
     pollStatus();
   } catch (e) {
     if (my !== state.req) return;
@@ -266,6 +337,7 @@ async function pollStatus() {
 
 $("#coin").addEventListener("change", e => pick(e.target.value));
 $("#list tbody").addEventListener("click", e => { const tr = e.target.closest("tr"); if (tr) pick(tr.dataset.id); });
+$("#bt-run").addEventListener("click", runBacktest);
 $("#auto").addEventListener("click", () => { state.dirty = {}; load(); });
 $("#range").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;

@@ -84,17 +84,23 @@ class FearGreed:
 
 
 class Glassnode:
-    """Metriche a chiave: SOPR e NVT (e MVRV Glassnode). La chiave arriva da GLASSNODE_API_KEY oppure,
-    nell'ambiente cloud, viene iniettata dal proxy nell'header X-Api-Key (si invia un segnaposto).
+    """Metriche a pagamento: SOPR e NVT (e MVRV Glassnode). DISATTIVATO di default: serve GLASSNODE_API_KEY.
     Ogni metrica è richiesta da sola: quelle non incluse nel piano della chiave sono saltate e dichiarate."""
     name = "Glassnode"
     PATHS = {"sopr": "indicators/sopr", "nvt": "indicators/nvt", "mvrv_gn": "market/mvrv"}
     ASSETS = {"btc": "BTC", "eth": "ETH"}       # il piano gratuito copre di fatto solo BTC ed ETH
 
     def __init__(self, key: str | None = None):
-        self.key = key or os.environ.get("GLASSNODE_API_KEY") or "proxy-injected"
+        self.key = key or os.environ.get("GLASSNODE_API_KEY") or ""
+
+    @property
+    def enabled(self) -> bool:
+        """Le API Glassnode sono a pagamento: spente finché non si imposta GLASSNODE_API_KEY."""
+        return bool(self.key)
 
     def metrics(self, asset: str = "btc", since: int | None = None) -> FetchResult:
+        if not self.enabled:
+            return _error(self.name, "non attivo: le API Glassnode sono a pagamento (imposta GLASSNODE_API_KEY per usarle)")
         sym = self.ASSETS.get(asset.lower())
         if not sym:
             return _error(self.name, f"{asset}: non coperto dal piano gratuito")

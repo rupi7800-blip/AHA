@@ -169,7 +169,7 @@ def fetch_onchain(inst: dict, force=False):
             storage.save_series(f"onchain:{inst['id']}:{col}", res.df[col])
     storage.log_fetch(inst["id"], "onchain", res.source, res.status, res.delay, res.message)
     asset = (inst.get("cm") or inst["id"]).lower()
-    if asset in Glassnode.ASSETS:      # SOPR e NVT reali: solo con chiave valida; senza, restano i proxy gratuiti
+    if GLASSNODE.enabled and asset in Glassnode.ASSETS:      # SOPR e NVT reali: solo con chiave a pagamento; senza, restano i proxy gratuiti
         gn = GLASSNODE.metrics(asset)
         if gn.status == "ok":
             for col in ("sopr", "nvt"):
@@ -676,10 +676,14 @@ def run_cycle(force=False):
         STATE["progress"] = "validazione sul pool di monete"
         try:
             val = clean(validation.run(results))
+            val_simple = clean(validation.run(results, key="simple"))
             storage.kv_set("aha_validation", val)
+            storage.kv_set("aha_validation_simple", val_simple)
             for iid, a in results.items():       # l'affidabilità di ogni segnale è quella del pool per il suo verso
                 if a.get("aha"):
                     validation.attach(a["aha"], val)
+                    if a["aha"].get("simple"):
+                        validation.attach(a["aha"]["simple"], val_simple)
                     storage.kv_set(f"analysis:{iid}", a)
         except Exception:
             log.error("validazione: %s", traceback.format_exc())

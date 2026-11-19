@@ -12,8 +12,24 @@ specializzata sulle criptovalute. Web app leggera (FastAPI + JS vanilla, install
 - Nuovo livello dati `app/data/`:
   - `adapters.py`: prezzi OHLCV Binance (mirror `data-api.binance.vision` se l'host principale è bloccato).
   - `onchain.py`: CoinMetrics community (MVRV, indirizzi attivi, flussi da/verso exchange, capitalizzazione),
-    DefiLlama (TVL), Alternative.me (Fear & Greed) e Glassnode (con chiave `GLASSNODE_API_KEY`: SOPR, NVT).
+    DefiLlama (TVL), Alternative.me (Fear & Greed); Glassnode (SOPR, NVT) è a pagamento e disattivato di default.
 - Velocità: walk-forward con finestra mobile; ciclo di 3 monete in circa 30 s (GFIP: oltre 15 minuti per una).
+
+## Due strategie affiancate
+
+- **AHA (voti + regime)**: voti di trend e on-chain, solo nel verso dell'EMA200, stop mobile.
+- **Regola semplice**: sopra l'EMA200 long, sotto short, senza indicatori; stesso stop iniziale da livelli e stesso stop mobile.
+Ogni moneta mostra entrambe, ciascuna con la propria affidabilità calcolata sul pool; il registro in avanti le segue separatamente.
+La regola semplice è stata aggiunta *dopo* aver visto che nel benchmark faceva meglio: non è una scelta fatta in campione.
+
+## Backtest sulla storia completa (`/api/aha/backtest/{id}`, riquadro "Backtest" nell'interfaccia)
+
+Prova una strategia su tutti i dati della moneta, con le stesse regole di simulazione dei segnali, curva del capitale contro buy & hold,
+drawdown, tabella per anno e operazioni. Opzioni: strategia, verso, intervallo di date, **storico esteso dalla nascita** (chiusure
+CoinMetrics: BTC dal 2010, ETH 2015, XRP 2014, LTC 2013, DOGE 2014, BNB 2017...; per il tratto precedente alla quotazione su Binance le
+barre sono ricostruite e il risultato è approssimato, riportato a parte), funding dei perpetual, parametri automatici (scelti sul
+primo 60% della finestra, il resto è fuori campione), periodo riservato escluso di default.
+Avvertenza: gli anni iniziali di BTC (2011: +2954%) dominano i totali; leggi la tabella per anno.
 
 ## Segnali e metodo di valutazione
 
@@ -125,6 +141,6 @@ Test: `pip install -r requirements-dev.txt && pytest -q`
 
 1. Fatto: base crypto-only + livello dati + velocità.
 2. Fatto: segnali con on-chain, ricerca parametri, affidabilità e % storica.
-3. In sospeso: SOPR/NVT reali (chiave Glassnode salvata nell'ambiente, ma l'API risponde 401), derivati, pesi dei voti.
+3. Glassnode (SOPR/NVT reali) è a pagamento: disattivato di default (`GLASSNODE_API_KEY` per attivarlo); restano i proxy gratuiti. Derivati e pesi dei voti: da fare.
 4. Fatto: grafici interattivi per smartphone con parametri modificabili.
 5. Fatto lato AHA: export per CryptoRadar e interfaccia di esecuzione (solo simulata). Da fare: lato CryptoRadar e, in futuro, esecutore reale.

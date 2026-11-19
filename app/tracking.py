@@ -23,16 +23,18 @@ def record(analyses: dict[str, dict]) -> int:
     """Registra i segnali attivi. UN TRADE ALLA VOLTA per moneta, come nel backtest: finché la voce precedente della
     stessa moneta è aperta, un nuovo segnale (anche se la tendenza continua) non viene registrato."""
     log = load()
-    seen = {(e["coin"], e["asof"], e["side"]) for e in log}
-    open_coins = {e["coin"] for e in log if e["status"] == "aperto"}
+    st = lambda e: e.get("strategy", "aha")
+    seen = {(e["coin"], st(e), e["asof"], e["side"]) for e in log}
+    open_keys = {(e["coin"], st(e)) for e in log if e["status"] == "aperto"}
     n = 0
     for cid, a in analyses.items():
-        s = (a or {}).get("aha") or {}
-        if s.get("side") and cid not in open_coins and (cid, s["asof"], s["side"]) not in seen:
-            log.append({"coin": cid, "side": s["side"], "asof": s["asof"], "entry_ref": s["entry"], "stop": s["stop_loss"],
-                        "tp_indicative": s.get("take_profit"), "params": s["params"], "status": "aperto",
-                        "logged_at": storage.utcnow()})
-            n += 1
+        base = (a or {}).get("aha") or {}
+        for strat, s in (("aha", base), ("simple", base.get("simple") or {})):          # due strategie, registri indipendenti
+            if s.get("side") and (cid, strat) not in open_keys and (cid, strat, s["asof"], s["side"]) not in seen:
+                log.append({"coin": cid, "strategy": strat, "side": s["side"], "asof": s["asof"], "entry_ref": s["entry"],
+                            "stop": s["stop_loss"], "tp_indicative": s.get("take_profit"), "params": s["params"],
+                            "status": "aperto", "logged_at": storage.utcnow()})
+                n += 1
     if n:
         storage.kv_set(KEY, log)
     return n
@@ -64,6 +66,10 @@ def evaluate(loader) -> list[dict]:
     if changed:
         storage.kv_set(KEY, log)
     return log
+
+
+def summary_by_strategy(log: list[dict]) -> dict:
+    return {s: summary([e for e in log if e.get("strategy", "aha") == s]) for s in ("aha", "simple")}
 
 
 def summary(log: list[dict]) -> dict:

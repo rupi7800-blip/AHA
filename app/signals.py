@@ -308,32 +308,9 @@ def compute_votes(df, onchain, fear_greed, params):
     return votes, score
 
 
-def build_signal(df: pd.DataFrame, onchain: dict[str, pd.Series] | None = None, fear_greed: pd.Series | None = None,
-                 overrides: dict | None = None, tune_params: bool = True, holdout_start: str | None = HOLDOUT_START) -> dict:
-    """df: barre giornaliere CHIUSE (open, high, low, close, volume), indice UTC.
-    Le barre da `holdout_start` in poi sono RISERVATE: non servono a scegliere i parametri e le statistiche non le toccano
-    (nessun trade che le usi entra nel fuori campione). La data è fissa: non scorre con i nuovi dati."""
-    onchain = onchain or {}
-    base = dict(DEFAULTS, **{k: v for k, v in (overrides or {}).items() if k in DEFAULTS})
-    if len(df) < 400:
-        return {"direction": 0, "action": "DATI INSUFFICIENTI", "why": f"servono almeno 400 barre, ce ne sono {len(df)}"}
-    n = len(df)
-    n_pre = n if holdout_start is None else int((df.index < pd.Timestamp(holdout_start, tz="UTC")).sum())
-    if n_pre < 400:
-        return {"direction": 0, "action": "DATI INSUFFICIENTI", "why": f"servono almeno 400 barre precedenti al periodo riservato, ce ne sono {n_pre}"}
-    h = int(base["horizon"])
-    params, tuning = (tune(df.iloc[:n_pre], base) if tune_params else (base, {}))
-    for k in (overrides or {}):               # i valori impostati dall'utente hanno la precedenza sulla ricerca automatica
-        if k in base:
-            params[k] = base[k]
-
-    votes, score = compute_votes(df, onchain, fear_greed, params)
-    atr = ind.atr(df)
-    trader = Trader(df, atr, params)
+def _block(df, atr, trader, score, params, n, n_pre, split, d_split, d_hold, votes=None) -> dict:
+    """Valuta UNA strategia (punteggio per barra): trade simulati, statistiche per segmento e verso, piano del segnale attuale."""
     trades, skipped = simulate(trader, score, params["min_votes"])
-    split = int(n_pre * TRAIN_FRAC)
-    d_split = str(df.index[split])[:10]
-    d_hold = str(df.index[n_pre])[:10] if n_pre < n else holdout_start or "-"
     hz = int(params["horizon"])
     # segmenti per barra d'INGRESSO, con scarto di sicurezza: il trade intero (fino a `horizon` barre) sta dentro il segmento
     seg = {"in_sample": [t for t in trades if t["e"] - 1 < split - hz],
@@ -342,21 +319,9 @@ def build_signal(df: pd.DataFrame, onchain: dict[str, pd.Series] | None = None, 
     hist.update(split_date=d_split, holdout_start=d_hold, skipped=skipped,
                 random_out_of_sample=random_timing(trader, split, n_pre - hz),
                 recent_trades=[{k: t[k] for k in ("date", "side", "net", "r", "exit", "bars")} for t in trades if t["e"] + t["bars"] <= n_pre][-60:])
-
     last = float(df["close"].iloc[-1]); a = float(atr.iloc[-1]); sc = float(score.iloc[-1]); t_last = n - 1
     direction = int(np.sign(sc)) if abs(sc) >= params["min_votes"] else 0
-    zones = trader.finder.important(t_last) if trader.finder else []
-    near = sorted(zones, key=lambda z: abs(z.price - last))[:8]
-    out = {
-        "asof": str(df.index[-1])[:10], "price": last, "score": sc, "min_votes": float(params["min_votes"]),
-        "direction": direction,
-        "votes": [{"indicator": k, "family": FAMILIES[k], "vote": int(v.iloc[-1])} for k, v in votes.items()],
-        "params": {k: params[k] for k in DEFAULTS}, "tuning": {k: {"chosen": v["chosen"], "note": v["note"]} for k, v in tuning.items()},
-        "history": hist, "levels": [z.as_dict() for z in sorted(near, key=lambda z: z.price)],
-        "onchain_used": sorted(k for k in votes if FAMILIES[k] != "tecnica"),
-        "onchain_missing": [x for x in ("mvrv", "exchange_flow", "sopr", "nvt", "fear_greed") if x not in votes],
-        "note": "Statistiche descrittive su una singola moneta. L'affidabilità si valuta sul pool di tutte le monete.",
-    }
+    out = {"score": sc, "direction": direction, "history": hist}
     plan = None
     if direction and trader.allowed(t_last, direction):
         if trader.finder:
@@ -379,21 +344,74 @@ def build_signal(df: pd.DataFrame, onchain: dict[str, pd.Series] | None = None, 
                               + f" confermato, mai in direzione sfavorevole; uscita a tempo dopo {int(params['horizon'])} giorni. "
                               "Il take profit è solo un livello indicativo (presa parziale)." if params["trail"] else
                               f"Uscita su stop, target o dopo {int(params['horizon'])} giorni."))
-        if d > 0 and "mvrv" in votes and int(votes["mvrv"].iloc[-1]) == 1:
-            out["positioning"] = "Zona di accumulo: MVRV sotto la soglia storica di fondo."
-        elif d < 0 and "mvrv" in votes and int(votes["mvrv"].iloc[-1]) == -1:
-            out["positioning"] = "Zona di distribuzione: MVRV sopra la soglia storica di picco."
+        if votes is not None:
+            if d > 0 and "mvrv" in votes and int(votes["mvrv"].iloc[-1]) == 1:
+                out["positioning"] = "Zona di accumulo: MVRV sotto la soglia storica di fondo."
+            elif d < 0 and "mvrv" in votes and int(votes["mvrv"].iloc[-1]) == -1:
+                out["positioning"] = "Zona di distribuzione: MVRV sopra la soglia storica di picco."
     else:
         out.update(action="ATTENDI", side=None)
         if direction:
             out["skipped_reason"] = (plan or {}).get("why") or "filtri d'ingresso non soddisfatti (regime o distanza dai livelli)"
     out["_trades"] = [[t["date"], t["side"], round(t["gross"], 5), round(t["cost"], 5), round(t["r"], 4), round(t["risk_pct"], 3)]
                       for t in seg["out_of_sample"]]
-    # esiti per barra (serve al test del caso sul pool di monete): solo periodo fuori campione e riservato
     lo, hi = split, n_pre - hz                            # stessi ingressi del fuori campione: simmetria con i trade del segnale
     out["_outcomes"] = {"dates": [str(x)[:10] for x in df.index[lo:hi]],
                         "long": [_o(trader.outcome(i, 1)) for i in range(lo, hi)],
                         "short": [_o(trader.outcome(i, -1)) for i in range(lo, hi)]}
+    return out
+
+
+SIMPLE_RULE = ("Regola semplice, senza indicatori: sopra l'EMA a 200 giorni si è long, sotto si è short; stop iniziale oltre il livello "
+               "importante più vicino, poi stop mobile sugli ultimi minimi/massimi confermati; uscita a tempo dopo 60 giorni.")
+
+
+def simple_score(df: pd.DataFrame) -> pd.Series:
+    """Punteggio della regola semplice: +3 sopra l'EMA200, -3 sotto (0 finché l'EMA200 non è disponibile)."""
+    return pd.Series(3.0 * np.sign(df["close"] - ind.ema(df["close"], 200)).fillna(0).values, index=df.index)
+
+
+def build_signal(df: pd.DataFrame, onchain: dict[str, pd.Series] | None = None, fear_greed: pd.Series | None = None,
+                 overrides: dict | None = None, tune_params: bool = True, holdout_start: str | None = HOLDOUT_START) -> dict:
+    """df: barre giornaliere CHIUSE (open, high, low, close, volume), indice UTC.
+    Restituisce la strategia AHA (voti + regime) al livello principale e la REGOLA SEMPLICE sotto la chiave "simple".
+    Le barre da `holdout_start` in poi sono RISERVATE: non servono a scegliere i parametri e le statistiche non le toccano
+    (nessun trade che le usi entra nel fuori campione). La data è fissa: non scorre con i nuovi dati."""
+    onchain = onchain or {}
+    base = dict(DEFAULTS, **{k: v for k, v in (overrides or {}).items() if k in DEFAULTS})
+    if len(df) < 400:
+        return {"direction": 0, "action": "DATI INSUFFICIENTI", "why": f"servono almeno 400 barre, ce ne sono {len(df)}"}
+    n = len(df)
+    n_pre = n if holdout_start is None else int((df.index < pd.Timestamp(holdout_start, tz="UTC")).sum())
+    if n_pre < 400:
+        return {"direction": 0, "action": "DATI INSUFFICIENTI", "why": f"servono almeno 400 barre precedenti al periodo riservato, ce ne sono {n_pre}"}
+    params, tuning = (tune(df.iloc[:n_pre], base) if tune_params else (base, {}))
+    for k in (overrides or {}):               # i valori impostati dall'utente hanno la precedenza sulla ricerca automatica
+        if k in base:
+            params[k] = base[k]
+
+    votes, score = compute_votes(df, onchain, fear_greed, params)
+    atr = ind.atr(df)
+    trader = Trader(df, atr, params)
+    split = int(n_pre * TRAIN_FRAC)
+    d_split = str(df.index[split])[:10]
+    d_hold = str(df.index[n_pre])[:10] if n_pre < n else holdout_start or "-"
+    last = float(df["close"].iloc[-1])
+    zones = trader.finder.important(n - 1) if trader.finder else []
+    near = sorted(zones, key=lambda z: abs(z.price - last))[:8]
+    out = {
+        "asof": str(df.index[-1])[:10], "price": last, "min_votes": float(params["min_votes"]),
+        "votes": [{"indicator": k, "family": FAMILIES[k], "vote": int(v.iloc[-1])} for k, v in votes.items()],
+        "params": {k: params[k] for k in DEFAULTS}, "tuning": {k: {"chosen": v["chosen"], "note": v["note"]} for k, v in tuning.items()},
+        "levels": [z.as_dict() for z in sorted(near, key=lambda z: z.price)],
+        "onchain_used": sorted(k for k in votes if FAMILIES[k] != "tecnica"),
+        "onchain_missing": [x for x in ("mvrv", "exchange_flow", "sopr", "nvt", "fear_greed") if x not in votes],
+        "note": "Statistiche descrittive su una singola moneta. L'affidabilità si valuta sul pool di tutte le monete.",
+    }
+    out.update(_block(df, atr, trader, score, params, n, n_pre, split, d_split, d_hold, votes))
+    simple = _block(df, atr, trader, simple_score(df), params, n, n_pre, split, d_split, d_hold)
+    simple.update(asof=out["asof"], price=last, params=out["params"], name="Regola semplice", rule=SIMPLE_RULE)
+    out["simple"] = simple
     return out
 
 
