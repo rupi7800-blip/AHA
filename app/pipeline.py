@@ -684,8 +684,8 @@ def run_cycle(force=False):
         except Exception:
             log.error("validazione: %s", traceback.format_exc())
         try:                                     # registro in avanti: indipendente dalla validazione
+            tracking.evaluate(lambda c: storage.load_bars(c, "1d").iloc[:-1])     # prima si chiudono le voci, poi si registrano le nuove
             tracking.record(results)
-            tracking.evaluate(lambda c: storage.load_bars(c, "1d").iloc[:-1])
         except Exception:
             log.error("registro in avanti: %s", traceback.format_exc())
         resolve_predictions()

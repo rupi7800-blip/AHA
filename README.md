@@ -32,8 +32,11 @@ Il take profit mostrato è solo il prossimo livello importante (presa parziale),
   correzione di Holm, costi doppi, senza i 5 trade migliori, senza una moneta alla volta;
 - simulazione prudente: ingresso all'apertura della barra dopo il segnale, gap oltre lo stop = uscita all'apertura, stop prima del
   target nella stessa barra, 20 bps per lato + 10 bps extra sugli stop. Il funding dei perpetual non è modellato;
-- le ultime 10 settimane sono riservate; con un orizzonte di 60 giorni contengono troppe poche operazioni per validare
-  (1 su 20 monete), quindi la prova fuori campione vera è il **registro in avanti** (`/api/aha/track`).
+- i dati dal 2026-09-10 in poi sono **riservati** (data fissa, `signals.HOLDOUT_START`): non entrano né nella scelta dei parametri né
+  nelle statistiche, e non sono esposti dall'API. Con un orizzonte di 60 giorni contengono comunque troppe poche operazioni per
+  validare (le ho contate una sola volta, non i risultati: 1 nel pool), quindi la prova fuori campione vera è il **registro in
+  avanti** (`/api/aha/track`): un trade alla volta per moneta, esiti calcolati con le stesse regole, confronto con il caso;
+- la correzione di Holm dell'app copre solo i due versi; quella del laboratorio copre tutte le varianti dei due giri.
 
 **Uscite da supporti e resistenze** (`app/levels.py`): pivot confermati con ritardo, zone raggruppate in ATR, forza da tocchi,
 recenza e ampiezza della reazione; stop oltre la zona con margine, target prima della resistenza con R/R minimo 1,5.
@@ -41,15 +44,19 @@ recenza e ampiezza della reazione; stop oltre la zona con margine, target prima 
 ## Risultati della ricerca (cartella `research/`)
 
 Pool di 20 monete, scelta sul periodo in campione, verifica fuori campione, costi realistici:
-- Indicatori classici (8 varianti, giro 1) con uscite ATR fisse o da livelli: aspettativa tra -0,04R e +0,04R, nessuna distinguibile dal caso.
-  Un'unica cella spicca (V3 short: +1,27R) ma ha 9 operazioni fuori campione ed è rumore.
+- Indicatori classici (8 varianti, giro 1) con uscite ATR fisse o da livelli: aspettativa tra -0,05R e +0,05R sui long e tra -0,01R
+  e +0,05R sugli short, nessuna distinguibile dal caso. Fanno eccezione V5 short (solo ritorno alla media: -0,24R, in perdita) e
+  V3 short (+1,27R ma 9 operazioni fuori campione: rumore).
 - Supporti e resistenze come livelli di rimbalzo (`level_quality_*.md`): le zone importanti rimbalzano come punti qualunque, anche
   con molti tocchi. Servono come criterio logico di invalidazione, non come previsione.
-- Trend-following con stop mobile (giro 2, esplorativo): la variante scelta in campione (T3, quella predefinita) dà long +0,35R e
-  short +0,09R fuori campione, ma il **caso con le stesse uscite** dà +0,32R e +0,04R: il vantaggio viene dalla struttura di uscita e
-  dalla deriva rialzista dei sopravvissuti, non dal tempismo degli ingressi (p=0,41 e 0,37). Affidabilità: **bassa**.
-  Con costi doppi i long restano a +0,29R, ma senza i 5 trade migliori scendono a -0,03R: dipendono da pochi trade molto grandi.
+- Trend-following con stop mobile (giro 2, esplorativo): la variante scelta in campione (T3, quella predefinita) dà long +0,40R e
+  short +0,13R fuori campione, ma il **caso con le stesse uscite** dà +0,34R e +0,04R: il vantaggio viene dalla struttura di uscita e
+  (probabilmente, non è stato separato con un test) dalla deriva rialzista dei sopravvissuti, non dal tempismo degli ingressi
+  (p=0,37 e 0,31). Affidabilità: **bassa**. Con costi doppi +0,35R e +0,09R; **senza i 5 trade migliori +0,01R e +0,01R**: il
+  risultato dipende da pochi trade molto grandi (tipico del trend-following: vince poco spesso ma molto).
 - Un grado "media" compare solo per T5 long (3 voti minimi, +0,78R, p=0,04 non corretto, Holm 1,00; senza i 5 migliori -0,06R): da non fidarsi.
+- Non è stato fatto: funding dei perpetual (su 60 giorni vale circa 0,15-0,3R: può azzerare il vantaggio sui long con leva; non pesa sullo spot),
+  confronto con buy & hold, congelamento della configurazione con l'hash del commit prima del test in avanti.
 - Limiti: le 20 monete sono i sopravvissuti; le soglie on-chain (MVRV 1 e 3,5) vengono da letteratura costruita sull'intera storia di BTC;
   il periodo fuori campione è stato visto nel primo giro del laboratorio (il secondo è esplorativo).
 
@@ -68,8 +75,9 @@ da zero: 328 s tra download e analisi, su 4 CPU. Lo scheduler periodico è opt-i
 ## Integrazione con CryptoRadar
 
 `GET /api/aha/export[?only_active=true]` restituisce `{generatedAt, items: Signal[]}` con gli stessi nomi/tipi di
-CryptoRadar (camelCase, date ISO, id CoinGecko in `coins`, prezzi USD) più `side`, `targetPrice`, `stopPrice`,
-`confidence` (affidabilità fuori campione, 0-1), `winRateOos`, `nOos`, `reliability`, `horizonDays`.
+CryptoRadar (camelCase, date ISO, id CoinGecko in `coins`, prezzi USD) più `side`, `targetPrice` (può essere `null` con lo stop
+mobile), `stopPrice`, `confidence` (0,8 alta / 0,55 media; `null` per bassa o non valutabile), `expectancyR` e `nPool`
+(aspettativa e numero di operazioni del pool), `reliability`, `basisStop`, `basisTarget`, `riskReward`, `horizonDays`.
 Lato CryptoRadar mancano (da fare nel suo repository): tabella `aha_signals`, job `refreshAhaSignals()` in
 `src/lib/ingest/aha.ts`, rotta `/api/signals`, variabile `AHA_BASE_URL`.
 

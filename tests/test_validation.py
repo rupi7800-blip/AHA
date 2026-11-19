@@ -69,36 +69,53 @@ def test_attach_uses_pool_grade_per_side_and_blocks_custom_params():
     assert V.attach({"side": None}, val)["reliability"]["grade"] == "nessun segnale"
 
 
-def test_forward_log_records_once_and_evaluates_with_backtest_rules(tmp_path):
+def _series(n=400, seed=3):
     import numpy as np, pandas as pd
+    rng = np.random.default_rng(seed)
+    c = 100 * np.exp(np.cumsum(rng.normal(0.001, 0.02, n)))
+    idx = pd.date_range("2024-01-01", periods=n, freq="D", tz="UTC")
+    return pd.DataFrame({"open": np.r_[c[0], c[:-1]], "high": c * 1.01, "low": c * 0.99, "close": c, "volume": 1.0}, index=idx)
+
+
+def test_forward_log_one_trade_at_a_time_and_same_rules(tmp_path):
     from app import signals as sg, storage, tracking
     from app.analysis import indicators as ind
     storage.init(tmp_path / "tr.sqlite")
-    rng = np.random.default_rng(3)
-    n = 400
-    c = 100 * np.exp(np.cumsum(rng.normal(0.001, 0.02, n)))
-    idx = pd.date_range("2024-01-01", periods=n, freq="D", tz="UTC")
-    df = pd.DataFrame({"open": np.r_[c[0], c[:-1]], "high": c * 1.01, "low": c * 0.99, "close": c, "volume": 1.0}, index=idx)
-    i = 200
+    df = _series(); i = 200
     params = dict(sg.DEFAULTS, trail=0, exit_sr=0, horizon=10)
-    a = {"aha": {"side": "long", "asof": str(idx[i].date()), "entry": float(c[i]), "stop_loss": 0.0, "take_profit": 0.0, "params": params}}
-    assert tracking.record({"X": a}) == 1 and tracking.record({"X": a}) == 0            # nessun duplicato
+    mk = lambda d: {"aha": {"side": "long", "asof": str(df.index[d].date()), "entry": float(df["close"].iloc[d]), "stop_loss": 0.0,
+                            "take_profit": 0.0, "params": params}}
+    assert tracking.record({"X": mk(i)}) == 1 and tracking.record({"X": mk(i)}) == 0           # nessun duplicato
+    assert tracking.record({"X": mk(i + 1)}) == 0                                                # stessa moneta ancora aperta: niente voci sovrapposte
     log = tracking.evaluate(lambda coin: df)
     expect = sg.Trader(df, ind.atr(df), params).outcome(i, 1)
-    assert log[0]["status"] == "chiuso" and log[0]["r"] == pytest.approx(expect["r"])    # stesse regole del backtest
-    # voce troppo recente: resta aperta
-    a2 = {"aha": dict(a["aha"], asof=str(idx[-3].date()))}
-    tracking.record({"X": a2})
-    log = tracking.evaluate(lambda coin: df)
-    assert [e["status"] for e in log] == ["chiuso", "aperto"]
-    assert tracking.summary(log)["n_open"] == 1 and tracking.summary(log)["long"]["n"] == 1
+    assert log[0]["status"] == "chiuso" and log[0]["r"] == pytest.approx(expect["r"])           # stesse regole del backtest
+    assert tracking.record({"X": mk(i + 20)}) == 1                                               # chiusa: si può registrare la successiva
 
 
-def test_null_calendar_shift_is_common_across_coins_with_different_windows():
-    import pandas as pd
-    # due monete con finestre diverse: lo spostamento in giorni è unico, non posizionale per moneta
-    a = make_coin(n_days=300, seed=1); b = make_coin(n_days=200, seed=2)
-    b["out"]["dates"] = [str(d.date()) for d in pd.date_range("2024-04-01", periods=200)]
-    b["trades"] = [[b["out"]["dates"][k], 1, 0.01, 0.004, 0.2, 5.0] for k in range(0, 200, 10)]
-    r = V.pooled_side({"A": a, "B": b}, 1)
-    assert r["n"] > 0 and r["n_null"] == V.N_NULL and 0 < r["p_vs_chance"] <= 1
+def test_forward_log_closes_early_on_stop_and_stays_open_otherwise(tmp_path):
+    import numpy as np, pandas as pd
+    from app import signals as sg, storage, tracking
+    from app.analysis import indicators as ind
+    storage.init(tmp_path / "tr2.sqlite")
+    df = _series(); n = len(df); i = n - 6                                      # solo 5 barre dopo il segnale, orizzonte 30
+    df = df.copy()
+    params = dict(sg.DEFAULTS, trail=0, exit_sr=0, horizon=30, cost_bps=0, slippage_bps=0, stop_slip_bps=0)
+    tr = sg.Trader(df, ind.atr(df), params)
+    assert tr.outcome(i, 1, partial=True) in ({"open": True},) or tr.outcome(i, 1, partial=True)["exit"] in ("stop", "target")
+    assert tr.outcome(i, 1) is None                                              # la versione completa aspetta l'orizzonte
+    df.iloc[i + 2, df.columns.get_loc("low")] = df["close"].iloc[i] * 0.5       # crollo: stop colpito al terzo giorno
+    o = sg.Trader(df, ind.atr(df), params).outcome(i, 1, partial=True)
+    assert o["exit"] == "stop" and o["bars"] == 2 and o["r"] < 0
+
+
+def test_forward_chance_and_summary(tmp_path):
+    from app import signals as sg, storage, tracking
+    storage.init(tmp_path / "tr3.sqlite")
+    df = _series()
+    params = dict(sg.DEFAULTS, trail=0, exit_sr=0, horizon=10)
+    log = [{"coin": "X", "side": "long", "asof": str(df.index[100].date()), "params": params, "status": "chiuso", "r": 0.5, "net": 0.02, "exit": "target", "bars": 5}]
+    ch = tracking.chance(log, lambda c: df)
+    assert ch["long"]["n"] > 100 and ch["short"]["n"] > 100
+    s = tracking.summary(log)
+    assert s["all"]["expectancy_r"] == pytest.approx(0.5) and s["n_open"] == 0

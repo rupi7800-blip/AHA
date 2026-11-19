@@ -119,7 +119,8 @@ def test_build_signal_structure_and_segments():
     r = sg.build_signal(df)
     assert r["action"] in ("ACQUISTA (long)", "VENDI / SHORT", "ATTENDI")
     h = r["history"]
-    assert {"in_sample", "out_of_sample", "holdout", "random_out_of_sample", "split_date", "holdout_start"} <= set(h)
+    assert {"in_sample", "out_of_sample", "random_out_of_sample", "split_date", "holdout_start"} <= set(h)
+    assert "holdout" not in h                                          # il periodo riservato non è mai esposto
     assert set(h["out_of_sample"]) == {"all", "long", "short"}
     assert h["split_date"] < h["holdout_start"]
     assert "_trades" in r and "_outcomes" in r
@@ -130,17 +131,27 @@ def test_build_signal_structure_and_segments():
 
 def test_holdout_never_influences_tuning_or_oos():
     df = synth(1500, seed=3)
-    r1 = sg.build_signal(df)
+    hold = str(df.index[1300].date())
+    r1 = sg.build_signal(df, holdout_start=hold)
     df2 = df.copy()
-    cut = len(df) - sg.HOLDOUT_DAYS
-    df2.iloc[cut + 5:, df2.columns.get_loc("close")] *= 3                       # stravolge solo il periodo riservato
+    df2.iloc[1305:, df2.columns.get_loc("close")] *= 3                          # stravolge solo il periodo riservato
     df2["open"] = df2["close"].shift(1).fillna(df2["close"]); df2["high"] = df2[["open", "close"]].max(axis=1) * 1.01; df2["low"] = df2[["open", "close"]].min(axis=1) * 0.99
-    # le barre prima del periodo riservato restano identiche (high/low incluse) per le prime `cut`
-    df2.iloc[:cut] = df.iloc[:cut]
-    r2 = sg.build_signal(df2)
+    df2.iloc[:1300] = df.iloc[:1300]
+    r2 = sg.build_signal(df2, holdout_start=hold)
     assert r1["tuning"] == r2["tuning"]
-    assert r1["history"]["out_of_sample"]["all"]["n"] == r2["history"]["out_of_sample"]["all"]["n"] or True
-    assert r1["history"]["split_date"] == r2["history"]["split_date"]
+    assert r1["history"]["out_of_sample"] == r2["history"]["out_of_sample"]         # nessun prezzo riservato nelle statistiche
+    assert r1["history"]["in_sample"] == r2["history"]["in_sample"]
+    assert r1["_trades"] == r2["_trades"] and r1["_outcomes"] == r2["_outcomes"]
+    assert all(x[0] < hold for x in r1["_trades"])
+
+
+def test_oos_trades_are_selected_by_entry_bar_symmetrically_with_chance():
+    df = synth(1500, seed=4)
+    r = sg.build_signal(df, holdout_start=str(df.index[1300].date()))
+    dates = r["_outcomes"]["dates"]
+    h = int(r["params"]["horizon"])
+    assert dates[-1] == str(df.index[1300 - h - 1].date())                           # ultimo ingresso valutabile = n_pre - horizon - 1
+    assert all(t[0] <= dates[-1] for t in r["_trades"])                              # i trade del segnale: stesso insieme di ingressi del caso
 
 
 def test_trailing_stop_only_moves_in_favourable_direction():

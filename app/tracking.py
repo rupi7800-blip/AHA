@@ -20,12 +20,15 @@ def load() -> list[dict]:
 
 
 def record(analyses: dict[str, dict]) -> int:
+    """Registra i segnali attivi. UN TRADE ALLA VOLTA per moneta, come nel backtest: finché la voce precedente della
+    stessa moneta è aperta, un nuovo segnale (anche se la tendenza continua) non viene registrato."""
     log = load()
     seen = {(e["coin"], e["asof"], e["side"]) for e in log}
+    open_coins = {e["coin"] for e in log if e["status"] == "aperto"}
     n = 0
     for cid, a in analyses.items():
         s = (a or {}).get("aha") or {}
-        if s.get("side") and (cid, s["asof"], s["side"]) not in seen:
+        if s.get("side") and cid not in open_coins and (cid, s["asof"], s["side"]) not in seen:
             log.append({"coin": cid, "side": s["side"], "asof": s["asof"], "entry_ref": s["entry"], "stop": s["stop_loss"],
                         "tp_indicative": s.get("take_profit"), "params": s["params"], "status": "aperto",
                         "logged_at": storage.utcnow()})
@@ -50,9 +53,9 @@ def evaluate(loader) -> list[dict]:
         df, atr = cache[e["coin"]]
         i = [str(x)[:10] for x in df.index].index(e["asof"])
         tr = signals.Trader(df, atr, e["params"])
-        o = tr.outcome(i, 1 if e["side"] == "long" else -1)
-        if o is None:
-            continue                                  # barre successive ancora insufficienti: resta aperto
+        o = tr.outcome(i, 1 if e["side"] == "long" else -1, partial=True)
+        if o is None or o.get("open"):
+            continue                                  # non ancora deciso (né stop né target né fine orizzonte): resta aperto
         changed = True
         if "skip" in o:
             e.update(status="scartato", why=o["skip"])
@@ -73,3 +76,25 @@ def summary(log: list[dict]) -> dict:
             out[side] = {"n": len(xs), "expectancy_r": float(r.mean()), "expectancy_pct": float(net.mean() * 100),
                          "win_rate": float((net > 0).mean())}
     return out
+
+
+def chance(log: list[dict], loader) -> dict:
+    """Il "caso" sullo stesso periodo: aspettativa media (R) di entrare in OGNI barra con le stesse regole, dal giorno
+    del primo segnale registrato di ciascuna moneta, per verso. È il riferimento con cui confrontare i trade registrati."""
+    acc = {"long": [], "short": []}
+    for coin in sorted({e["coin"] for e in log}):
+        first = min(e["asof"] for e in log if e["coin"] == coin)
+        df = loader(coin)
+        if df is None or len(df) < 50:
+            continue
+        atr = ind.atr(df)
+        tr = signals.Trader(df, atr, next(e["params"] for e in log if e["coin"] == coin))
+        dates = [str(x)[:10] for x in df.index]
+        if first not in dates:
+            continue
+        for i in range(dates.index(first), len(df) - 2):
+            for name, side in (("long", 1), ("short", -1)):
+                o = tr.outcome(i, side, partial=True)
+                if o and "skip" not in o and not o.get("open"):
+                    acc[name].append(o["r"])
+    return {k: ({"n": len(v), "expectancy_r": float(np.mean(v))} if v else None) for k, v in acc.items()}

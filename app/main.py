@@ -472,7 +472,7 @@ def aha_export(only_active: bool = False):
         if only_active and not side:
             continue
         rel = s.get("reliability") or {}
-        score = {"alta": 80, "media": 55, "bassa": 25}.get(rel.get("grade"))
+        score = {"alta": 80, "media": 55}.get(rel.get("grade"))       # per "bassa" o "non valutabile" non si dichiara nessuna fiducia
         items.append({
             "id": f"aha-{inst['id'].lower()}-{s['asof']}", "title": f"{inst['id']}: {s['action']}",
             "excerpt": rel.get("why"), "url": None,
@@ -560,5 +560,7 @@ def exec_positions():
 def aha_track():
     """Registro in avanti dei segnali (paper): voci aperte e chiuse con l'esito calcolato con le stesse regole del backtest."""
     log = tracking.load()
-    return pl.clean({"summary": tracking.summary(log), "entries": log[-100:][::-1],
-                     "note": "Verifica in avanti: i segnali sono registrati prima di conoscerne l'esito."})
+    ch = tracking.chance(log, lambda c: storage.load_bars(c, "1d").iloc[:-1]) if log else {}
+    return pl.clean({"summary": tracking.summary(log), "chance": ch, "entries": log[-100:][::-1],
+                     "note": "Verifica in avanti: un trade alla volta per moneta, registrato prima di conoscerne l'esito. "
+                             "Servono almeno 30 operazioni chiuse per trarre conclusioni; confrontare sempre con il caso."})

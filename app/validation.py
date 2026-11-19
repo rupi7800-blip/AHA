@@ -7,7 +7,7 @@ Per ogni verso (long / short) separatamente, sul solo periodo fuori campione:
   in modo circolare in una finestra comune) e si rivalutano con le stesse uscite: si conserva numero di operazioni,
   quota long/short, raggruppamento temporale e correlazione tra monete. p = (k+1)/(N+1);
 - correzione di Holm tra i due versi; robustezza: costi doppi, senza i 5 trade migliori, senza una moneta alla volta.
-Il periodo riservato (holdout) si calcola solo su richiesta esplicita (`window="holdout"`)."""
+Il periodo riservato (dati dal 2026-09-10, `signals.HOLDOUT_START`) non entra in nessuna statistica: i suoi trade non sono neppure memorizzati."""
 from __future__ import annotations
 
 import numpy as np

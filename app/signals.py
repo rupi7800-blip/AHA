@@ -22,7 +22,7 @@ from .analysis import indicators as ind
 from .levels import LevelFinder, plan_exit, trailing_stop
 
 TRAIN_FRAC = 0.6
-HOLDOUT_DAYS = 70     # ultime 10 settimane: riservate, da guardare una sola volta a fine sviluppo
+HOLDOUT_START = "2026-09-10"   # dati da questa data in poi: RISERVATI. Non servono a scegliere nulla e le loro statistiche non sono calcolate né esposte
 MIN_TUNE_N = 30
 
 DEFAULTS = {
@@ -165,15 +165,19 @@ class Trader:
         self.finder = LevelFinder(df, atr, p) if p.get("exit_sr", 1) else None
         self._out: dict = {}
 
-    def outcome(self, i: int, side: int) -> dict | None:
+    def outcome(self, i: int, side: int, partial: bool = False) -> dict | None:
+        """Esito del trade. Con partial=True (registro in avanti) restituisce anche gli esiti già decisi prima di `horizon` barre
+        (stop o target colpiti) e {"open": True} se non ancora deciso."""
+        if partial:
+            return self._compute(i, side, True)
         key = (i, side)
         if key not in self._out:
             self._out[key] = self._compute(i, side)
         return self._out[key]
 
-    def _compute(self, i: int, side: int):
+    def _compute(self, i: int, side: int, partial: bool = False):
         p = self.p; h = int(p["horizon"]); e = i + 1
-        if e + h >= self.n:
+        if e + h >= self.n and not (partial and e < self.n):
             return None
         a, ref = self.atr[i], self.c[i]
         if not (np.isfinite(a) and a > 0):
@@ -189,8 +193,8 @@ class Trader:
         if side * (entry - stop) <= 0 or (tp is not None and side * (tp - entry) <= 0):
             return {"skip": "ingresso oltre stop o target"}
         stop0 = stop
-        exit_px, why, j = self.c[e + h - 1], "tempo", e + h - 1
-        for j in range(e, e + h):
+        exit_px, why, j = (self.c[e + h - 1], "tempo", e + h - 1) if e + h <= self.n else (None, "aperto", self.n - 1)
+        for j in range(e, min(e + h, self.n)):
             if j > e and (self.o[j] <= stop if side > 0 else self.o[j] >= stop):
                 exit_px, why = self.o[j], "stop"; break                       # gap oltre lo stop
             hit_stop = self.l[j] <= stop if side > 0 else self.h[j] >= stop
@@ -201,6 +205,8 @@ class Trader:
                 exit_px, why = tp, "target"; break
             if p.get("trail", 0) and self.finder is not None:
                 stop = trailing_stop(self.finder, side, e, j, stop, self.atr[j], p["stop_buf"])
+        if why == "aperto":
+            return {"open": True}
         cost = 2 * (p["cost_bps"] + p["slippage_bps"]) / 1e4 + (p["stop_slip_bps"] / 1e4 if why == "stop" else 0.0)
         gross = side * (exit_px / entry - 1)
         risk = abs(entry - stop0) / entry
@@ -303,16 +309,19 @@ def compute_votes(df, onchain, fear_greed, params):
 
 
 def build_signal(df: pd.DataFrame, onchain: dict[str, pd.Series] | None = None, fear_greed: pd.Series | None = None,
-                 overrides: dict | None = None, tune_params: bool = True, holdout_days: int = HOLDOUT_DAYS) -> dict:
+                 overrides: dict | None = None, tune_params: bool = True, holdout_start: str | None = HOLDOUT_START) -> dict:
     """df: barre giornaliere CHIUSE (open, high, low, close, volume), indice UTC.
-    Le ultime `holdout_days` barre sono un periodo RISERVATO: non servono a scegliere i parametri e le loro statistiche
-    sono calcolate a parte (`history.holdout`), da guardare una sola volta a fine sviluppo."""
+    Le barre da `holdout_start` in poi sono RISERVATE: non servono a scegliere i parametri e le statistiche non le toccano
+    (nessun trade che le usi entra nel fuori campione). La data è fissa: non scorre con i nuovi dati."""
     onchain = onchain or {}
     base = dict(DEFAULTS, **{k: v for k, v in (overrides or {}).items() if k in DEFAULTS})
     if len(df) < 400:
         return {"direction": 0, "action": "DATI INSUFFICIENTI", "why": f"servono almeno 400 barre, ce ne sono {len(df)}"}
     n = len(df)
-    n_pre = n - holdout_days
+    n_pre = n if holdout_start is None else int((df.index < pd.Timestamp(holdout_start, tz="UTC")).sum())
+    if n_pre < 400:
+        return {"direction": 0, "action": "DATI INSUFFICIENTI", "why": f"servono almeno 400 barre precedenti al periodo riservato, ce ne sono {n_pre}"}
+    h = int(base["horizon"])
     params, tuning = (tune(df.iloc[:n_pre], base) if tune_params else (base, {}))
     for k in (overrides or {}):               # i valori impostati dall'utente hanno la precedenza sulla ricerca automatica
         if k in base:
@@ -323,15 +332,15 @@ def build_signal(df: pd.DataFrame, onchain: dict[str, pd.Series] | None = None, 
     trader = Trader(df, atr, params)
     trades, skipped = simulate(trader, score, params["min_votes"])
     split = int(n_pre * TRAIN_FRAC)
-    d_split, d_hold = str(df.index[split])[:10], str(df.index[n_pre])[:10]
-    def _ends_before(t, limit):               # scarto di sicurezza: un trade che finisce nel periodo riservato non entra nel fuori campione
-        return t["e"] + t["bars"] - 1 < limit
-    seg = {"in_sample": [t for t in trades if t["date"] < d_split],
-           "out_of_sample": [t for t in trades if d_split <= t["date"] < d_hold and _ends_before(t, n_pre)],
-           "holdout": [t for t in trades if t["date"] >= d_hold]}
+    d_split = str(df.index[split])[:10]
+    d_hold = str(df.index[n_pre])[:10] if n_pre < n else holdout_start or "-"
+    hz = int(params["horizon"])
+    # segmenti per barra d'INGRESSO, con scarto di sicurezza: il trade intero (fino a `horizon` barre) sta dentro il segmento
+    seg = {"in_sample": [t for t in trades if t["e"] - 1 < split - hz],
+           "out_of_sample": [t for t in trades if split <= t["e"] - 1 < n_pre - hz]}
     hist = {k: by_side(v) for k, v in seg.items()}
     hist.update(split_date=d_split, holdout_start=d_hold, skipped=skipped,
-                random_out_of_sample=random_timing(trader, split, n_pre - int(params["horizon"])),
+                random_out_of_sample=random_timing(trader, split, n_pre - hz),
                 recent_trades=[{k: t[k] for k in ("date", "side", "net", "r", "exit", "bars")} for t in trades[-60:]])
 
     last = float(df["close"].iloc[-1]); a = float(atr.iloc[-1]); sc = float(score.iloc[-1]); t_last = n - 1
@@ -381,7 +390,7 @@ def build_signal(df: pd.DataFrame, onchain: dict[str, pd.Series] | None = None, 
     out["_trades"] = [[t["date"], t["side"], round(t["gross"], 5), round(t["cost"], 5), round(t["r"], 4), round(t["risk_pct"], 3)]
                       for t in seg["out_of_sample"]]
     # esiti per barra (serve al test del caso sul pool di monete): solo periodo fuori campione e riservato
-    lo, hi = split, n_pre - int(params["horizon"])        # solo ingressi il cui trade si chiude prima del periodo riservato
+    lo, hi = split, n_pre - hz                            # stessi ingressi del fuori campione: simmetria con i trade del segnale
     out["_outcomes"] = {"dates": [str(x)[:10] for x in df.index[lo:hi]],
                         "long": [_o(trader.outcome(i, 1)) for i in range(lo, hi)],
                         "short": [_o(trader.outcome(i, -1)) for i in range(lo, hi)]}
