@@ -84,24 +84,36 @@ class FearGreed:
 
 
 class Glassnode:
-    """Metriche a chiave (variabile GLASSNODE_API_KEY): SOPR, NVT, MVRV a risoluzione giornaliera."""
+    """Metriche a chiave: SOPR e NVT (e MVRV Glassnode). La chiave arriva da GLASSNODE_API_KEY oppure,
+    nell'ambiente cloud, viene iniettata dal proxy nell'header X-Api-Key (si invia un segnaposto).
+    Ogni metrica è richiesta da sola: quelle non incluse nel piano della chiave sono saltate e dichiarate."""
     name = "Glassnode"
     PATHS = {"sopr": "indicators/sopr", "nvt": "indicators/nvt", "mvrv_gn": "market/mvrv"}
+    ASSETS = {"btc": "BTC", "eth": "ETH"}       # il piano gratuito copre di fatto solo BTC ed ETH
 
     def __init__(self, key: str | None = None):
-        self.key = key or os.environ.get("GLASSNODE_API_KEY", "")
+        self.key = key or os.environ.get("GLASSNODE_API_KEY") or "proxy-injected"
 
-    def metrics(self, asset: str = "BTC") -> FetchResult:
-        if not self.key:
-            return _error(self.name, "chiave API non impostata (GLASSNODE_API_KEY)")
-        try:
-            cols = {}
-            for k, p in self.PATHS.items():
-                rows = http_get(f"https://api.glassnode.com/v1/metrics/{p}", {"a": asset, "i": "24h", "api_key": self.key}).json()
+    def metrics(self, asset: str = "btc", since: int | None = None) -> FetchResult:
+        sym = self.ASSETS.get(asset.lower())
+        if not sym:
+            return _error(self.name, f"{asset}: non coperto dal piano gratuito")
+        cols, errors = {}, []
+        for k, path in self.PATHS.items():
+            try:
+                params = {"a": sym, "i": "24h"}
+                if since:
+                    params["s"] = since
+                rows = http_get(f"https://api.glassnode.com/v1/metrics/{path}", params, headers={"X-Api-Key": self.key}).json()
                 cols[k] = pd.Series({pd.Timestamp(r["t"], unit="s", tz="UTC"): r["v"] for r in rows if r.get("v") is not None})
-            return FetchResult(pd.DataFrame(cols), self.name, "~1 giorno")
-        except Exception as e:
-            return _error(self.name, e)
+            except Exception as e:
+                msg = str(e)
+                errors.append(f"{k}: " + ("accesso negato o chiave non valida (401/403)" if any(c in msg for c in ("401", "403")) else msg[:80]))
+        if not cols:
+            return _error(self.name, "; ".join(errors) or "nessuna metrica")
+        df = pd.DataFrame(cols)
+        df.index = df.index.normalize()
+        return FetchResult(df, self.name, "~1 giorno", message="; ".join(errors))
 
 
 COINMETRICS, DEFILLAMA, FEARGREED = CoinMetrics(), DefiLlama(), FearGreed()

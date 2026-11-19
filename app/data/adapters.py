@@ -31,12 +31,12 @@ _session = requests.Session()
 _session.headers["User-Agent"] = "AHA-crypto-analytics/0.1"
 
 
-def http_get(url: str, params: dict | None = None, retries: int = 3):
+def http_get(url: str, params: dict | None = None, retries: int = 3, headers: dict | None = None):
     """GET con ripetizione sugli errori temporanei (429, 5xx, rete) e attesa crescente."""
     last = None
     for i in range(retries):
         try:
-            r = _session.get(url, params=params, timeout=TIMEOUT)
+            r = _session.get(url, params=params, headers=headers, timeout=TIMEOUT)
             if r.status_code in (429, 500, 502, 503, 504):
                 last = RuntimeError(f"HTTP {r.status_code}")
                 time.sleep(0.5 * 2 ** i)

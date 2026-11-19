@@ -29,6 +29,8 @@ DEFAULTS = {
     "macd_f": 12, "macd_s": 26, "macd_sig": 9,
     "bb_n": 20, "bb_k": 2.0,
     "mvrv_lo": 1.0, "mvrv_hi": 3.5,          # soglie storiche indicate: <1 zona di fondo, >3,5 zona di picco
+    "sopr_lo": 1.0, "sopr_hi": 1.03,          # SOPR (media 7g): <1 vendite in perdita (capitolazione), alto = presa di profitto
+    "nvt_pct": 0.9,                           # NVT sopra il 90° percentile (o sotto il 10°) dell'ultimo anno
     "flow_z": 2.0,                            # z-score (90g) del netflow exchange a 7g
     "fg_lo": 20.0, "fg_hi": 80.0,             # Fear & Greed: paura/avidità estreme (contrarian)
     "horizon": 14, "atr_stop": 2.0, "atr_tp": 3.0, "min_votes": 2,
@@ -122,6 +124,14 @@ def onchain_votes(df: pd.DataFrame, onchain: dict[str, pd.Series], fear_greed: p
         z = (n7 - n7.rolling(90, min_periods=60).mean()) / n7.rolling(90, min_periods=60).std()
         # afflusso netto insolito verso gli exchange = pressione di vendita; deflusso = accumulo
         out["exchange_flow"] = pd.Series(np.where(z > p["flow_z"], -1, np.where(z < -p["flow_z"], 1, 0)), index=df.index).where(z.notna(), 0)
+    so = _align(onchain.get("sopr"), df.index)
+    if so is not None and so.notna().sum() > 30:
+        m7 = so.rolling(7, min_periods=5).mean()
+        out["sopr"] = pd.Series(np.where(m7 < p["sopr_lo"], 1, np.where(m7 > p["sopr_hi"], -1, 0)), index=df.index).where(m7.notna(), 0)
+    nv = _align(onchain.get("nvt"), df.index)
+    if nv is not None and nv.notna().sum() > 200:
+        pct = nv.rolling(365, min_periods=180).rank(pct=True)
+        out["nvt"] = pd.Series(np.where(pct > p["nvt_pct"], -1, np.where(pct < 1 - p["nvt_pct"], 1, 0)), index=df.index).where(pct.notna(), 0)
     fg = _align(fear_greed, df.index)
     if fg is not None and fg.notna().any():
         out["fear_greed"] = pd.Series(np.where(fg < p["fg_lo"], 1, np.where(fg > p["fg_hi"], -1, 0)), index=df.index).where(fg.notna(), 0)
@@ -206,7 +216,7 @@ def build_signal(df: pd.DataFrame, onchain: dict[str, pd.Series] | None = None, 
     votes = {name: VOTERS[name](df, params) for name in VOTERS}
     votes.update(onchain_votes(df, onchain, fear_greed, params))
     families = {"ema": "tecnica", "rsi": "tecnica", "macd": "tecnica", "bb": "tecnica",
-                "mvrv": "on-chain", "exchange_flow": "on-chain", "fear_greed": "sentiment"}
+                "mvrv": "on-chain", "exchange_flow": "on-chain", "sopr": "on-chain", "nvt": "on-chain", "fear_greed": "sentiment"}
     score = sum(votes.values())
     atr = ind.atr(df)
     n = len(df); split = int(n * TRAIN_FRAC)
@@ -235,7 +245,7 @@ def build_signal(df: pd.DataFrame, onchain: dict[str, pd.Series] | None = None, 
                     "recent_trades": trades[-15:]},
         "reliability": rel,
         "onchain_used": sorted(k for k in votes if families[k] != "tecnica"),
-        "onchain_missing": [x for x in ("mvrv", "exchange_flow", "fear_greed") if x not in votes],
+        "onchain_missing": [x for x in ("mvrv", "exchange_flow", "sopr", "nvt", "fear_greed") if x not in votes],
         "note": "Percentuali storiche non garantiscono risultati futuri. Si valuta solo la parte fuori campione.",
     }
     if direction:

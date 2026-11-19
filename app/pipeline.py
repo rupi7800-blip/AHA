@@ -23,7 +23,9 @@ from .analysis import stats_models as sm
 from .backtest import backtest_rule
 from . import signals
 from .data.adapters import ADAPTERS
-from .data.onchain import COINMETRICS, FEARGREED
+from .data.onchain import COINMETRICS, FEARGREED, Glassnode
+
+GLASSNODE = Glassnode()
 from .predict.model import HORIZONS, INTRADAY_HORIZONS, walk_forward
 from .scanner import RULES, active_signals, score_opportunity
 from .plans import build_plans
@@ -148,7 +150,7 @@ def fetch_instrument(inst: dict, force=False):
 
 
 ONCHAIN_REFRESH_H = 12
-ONCHAIN_COLS = ("mvrv", "ex_netflow_usd", "ex_inflow_usd", "ex_outflow_usd", "active_addresses", "market_cap", "nvt_proxy")
+ONCHAIN_COLS = ("sopr", "nvt", "mvrv", "ex_netflow_usd", "ex_inflow_usd", "ex_outflow_usd", "active_addresses", "market_cap", "nvt_proxy")
 
 
 def _fresh(iid, iv, hours):
@@ -166,6 +168,14 @@ def fetch_onchain(inst: dict, force=False):
         for col in res.df.columns:
             storage.save_series(f"onchain:{inst['id']}:{col}", res.df[col])
     storage.log_fetch(inst["id"], "onchain", res.source, res.status, res.delay, res.message)
+    asset = (inst.get("cm") or inst["id"]).lower()
+    if asset in Glassnode.ASSETS:      # SOPR e NVT reali: solo con chiave valida; senza, restano i proxy gratuiti
+        gn = GLASSNODE.metrics(asset)
+        if gn.status == "ok":
+            for col in ("sopr", "nvt"):
+                if col in gn.df:
+                    storage.save_series(f"onchain:{inst['id']}:{col}", gn.df[col])
+        storage.log_fetch(inst["id"], "glassnode", gn.source, gn.status, gn.delay, gn.message)
 
 
 def fetch_fear_greed(force=False):

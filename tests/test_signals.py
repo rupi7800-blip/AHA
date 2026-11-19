@@ -85,7 +85,7 @@ def test_build_signal_structure_and_oos_separation():
     h = r["history"]
     assert {"in_sample", "out_of_sample", "baseline_out_of_sample", "split_date"} <= set(h)
     assert r["reliability"]["grade"] in ("alta", "media", "bassa", "non valutabile")
-    assert r["onchain_missing"] == ["mvrv", "exchange_flow", "fear_greed"]
+    assert r["onchain_missing"] == ["mvrv", "exchange_flow", "sopr", "nvt", "fear_greed"]
     if r["direction"]:
         d = r["direction"]
         assert (r["take_profit"] - r["entry"]) * d > 0 and (r["entry"] - r["stop_loss"]) * d > 0
@@ -113,3 +113,25 @@ def test_api_signal_endpoint(tmp_path):
     assert c.get("/api/aha/signal/BTC?pippo=1").status_code == 400
     assert c.get("/api/aha/signal/NOPE").status_code == 404
     assert c.get("/api/aha/signals").status_code == 200
+
+
+def test_sopr_and_nvt_votes():
+    df = synth(600, seed=6)
+    sopr = pd.Series(1.01, index=df.index); sopr.iloc[400:420] = 0.95        # capitolazione
+    nvt = pd.Series(np.linspace(40, 60, 600), index=df.index); nvt.iloc[450:] = 200   # NVT estremo
+    v = sg.onchain_votes(df, {"sopr": sopr, "nvt": nvt}, None, sg.DEFAULTS)
+    assert v["sopr"].iloc[415] == 1 and v["sopr"].iloc[380] == 0
+    assert v["nvt"].iloc[500] == -1
+
+
+def test_glassnode_partial_and_unsupported(monkeypatch):
+    from app.data import onchain
+    def fake_get(url, params=None, retries=3, headers=None):
+        assert headers["X-Api-Key"]
+        if "sopr" in url:
+            raise RuntimeError("401 Client Error")
+        return type("R", (), {"json": lambda self: [{"t": 1700000000, "v": 1.2}]})()
+    monkeypatch.setattr(onchain, "http_get", fake_get)
+    r = onchain.Glassnode().metrics("btc")
+    assert r.status == "ok" and "nvt" in r.df and "sopr" not in r.df and "sopr:" in r.message
+    assert onchain.Glassnode().metrics("sol").status == "errore"
