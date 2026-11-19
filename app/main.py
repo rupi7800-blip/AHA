@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import pipeline as pl
-from . import signals, storage
+from . import execution, signals, storage
 from .analysis import indicators as ind
 from .backtest import backtest_rule
 from .scanner import OPPORTUNITY_TYPES, RULES, RULES_BY_ID
@@ -24,12 +24,13 @@ STATIC = Path(__file__).resolve().parent.parent / "static"
 @asynccontextmanager
 async def _lifespan(app):
     storage.init()
-    if not os.environ.get("AHA_NO_SCHEDULER"):
+    # aggiornamento SOLO manuale (tasto "Aggiorna dati"); lo scheduler periodico è opt-in con AHA_SCHEDULER=1
+    if os.environ.get("AHA_SCHEDULER") == "1" and not os.environ.get("AHA_NO_SCHEDULER"):
         pl.start_scheduler()
     yield
 
 
-app = FastAPI(title="Global Financial Intelligence Platform", version=pl.ENGINE_VERSION, lifespan=_lifespan)
+app = FastAPI(title="AHA - Alpha Horizon Crypto Analytics", version=pl.ENGINE_VERSION, lifespan=_lifespan)
 # compressione: le risposte JSON (serie dei grafici) e Plotly si riducono di 4-8 volte,
 # decisivo da smartphone su rete mobile
 app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=5)
@@ -429,3 +430,103 @@ def aha_signals(only_active: bool = False):
             "n_oos": ((s.get("history") or {}).get("out_of_sample") or {}).get("n"), "onchain_used": s.get("onchain_used")})
     rows.sort(key=lambda r: (not r["side"], -((r["reliability"] or {}).get("score") or 0)))
     return {"signals": rows}
+
+
+# ------------------------------------------------------------------ esportazione per CryptoRadar
+@app.get("/api/aha/export")
+def aha_export(only_active: bool = False):
+    """Segnali nel formato letto da CryptoRadar: { generatedAt, items: Signal[] } con nomi camelCase, date ISO,
+    id delle monete come CoinGecko e prezzi in USD. `confidence` è il punteggio di affidabilità fuori campione (0-1);
+    la percentuale storica di successo è in `winRateOos`."""
+    items = []
+    for inst in pl.instruments():
+        a = storage.kv_get(f"analysis:{inst['id']}") or {}
+        s = a.get("aha")
+        if not s or not s.get("price"):
+            continue
+        side = s.get("side")
+        if only_active and not side:
+            continue
+        rel = s.get("reliability") or {}
+        oos = (s.get("history") or {}).get("out_of_sample") or {}
+        score = rel.get("score")
+        items.append({
+            "id": f"aha-{inst['id'].lower()}-{s['asof']}", "title": f"{inst['id']}: {s['action']}",
+            "excerpt": rel.get("why"), "url": None,
+            "publishedAt": (a.get("meta") or {}).get("analyzed_at") or s["asof"],
+            "coins": [inst.get("cg") or inst["id"].lower()], "symbol": inst["id"],
+            "side": side or "neutral", "price": s["price"],
+            "targetPrice": s.get("take_profit"), "stopPrice": s.get("stop_loss"),
+            "confidence": None if score is None else score / 100,
+            "winRateOos": oos.get("win_rate"), "nOos": oos.get("n"), "reliability": rel.get("grade"),
+            "horizonDays": s.get("horizon_days"),
+            "flags": sorted({"on-chain" if k in ("mvrv", "exchange_flow", "sopr", "nvt") else "sentiment" for k in s.get("onchain_used", [])}),
+            "lang": "it", "status": "attivo" if side else "in attesa"})
+    return {"generatedAt": storage.utcnow(), "items": items}
+
+
+# ------------------------------------------------------------------ esecuzione (solo anteprima e simulazione)
+_PAPER = execution.PaperExecutor()
+
+
+def _exec_cfg() -> execution.ExecutionConfig:
+    saved = storage.kv_get("exec_config") or {}
+    cfg = execution.ExecutionConfig()
+    for k, v in saved.items():
+        if hasattr(cfg, k):
+            setattr(cfg, k, tuple(v) if k == "allowed_grades" else v)
+    return cfg
+
+
+@app.get("/api/aha/execution/config")
+def exec_get():
+    from dataclasses import asdict
+    return {**asdict(_exec_cfg()), "note": "Solo simulazione (paper): nessun ordine viene inviato a un exchange. Spento di default."}
+
+
+@app.post("/api/aha/execution/config")
+def exec_set(body: dict = Body(...)):
+    cur = _exec_cfg(); from dataclasses import asdict
+    new = {}
+    for k, v in body.items():
+        if not hasattr(cur, k):
+            raise HTTPException(400, f"impostazione sconosciuta: {k}")
+        if k == "mode" and v != "paper":
+            raise HTTPException(400, "è implementata solo la modalità paper")
+        if k == "allowed_grades" and not (isinstance(v, list) and all(x in ("alta", "media", "bassa") for x in v)):
+            raise HTTPException(400, "allowed_grades: lista di alta/media/bassa")
+        if k in ("risk_pct", "equity", "max_notional_pct") and not (isinstance(v, (int, float)) and v > 0):
+            raise HTTPException(400, f"{k}: numero positivo")
+        new[k] = v
+    storage.kv_set("exec_config", {**asdict(cur), **new, "mode": "paper"})
+    return exec_get()
+
+
+def _plan(iid: str):
+    a = storage.kv_get(f"analysis:{iid}")
+    inst = pl.instrument(iid)
+    if not inst or not a or not a.get("aha"):
+        raise HTTPException(404, "analisi non disponibile")
+    return inst, execution.plan_order(a["aha"], inst["symbol"], _exec_cfg(), open_positions=len(_PAPER.positions()),
+                                      now_asof=str(__import__("datetime").date.today()))
+
+
+@app.get("/api/aha/execution/preview/{iid}")
+def exec_preview(iid: str):
+    """Mostra l'ordine che verrebbe generato e i controlli di sicurezza: NON invia nulla."""
+    from dataclasses import asdict
+    inst, plan = _plan(iid)
+    return pl.clean({"ok": plan["ok"], "checks": plan["checks"], "order": asdict(plan["order"]) if plan["order"] else None})
+
+
+@app.post("/api/aha/execution/paper/{iid}")
+def exec_paper(iid: str):
+    inst, plan = _plan(iid)
+    if not plan["ok"]:
+        raise HTTPException(409, "controlli di sicurezza non superati: " + "; ".join(c["check"] for c in plan["checks"] if not c["ok"]))
+    return pl.clean(_PAPER.place(plan["order"]))
+
+
+@app.get("/api/aha/execution/positions")
+def exec_positions():
+    return pl.clean({"mode": "paper", "positions": _PAPER.positions(), "closed": _PAPER.closed})

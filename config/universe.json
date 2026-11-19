@@ -9,140 +9,160 @@
    "name": "Bitcoin",
    "market": "crypto",
    "source": "binance",
-   "symbol": "BTCUSDT"
+   "symbol": "BTCUSDT",
+   "cg": "bitcoin"
   },
   {
    "id": "ETH",
    "name": "Ethereum",
    "market": "crypto",
    "source": "binance",
-   "symbol": "ETHUSDT"
+   "symbol": "ETHUSDT",
+   "cg": "ethereum"
   },
   {
    "id": "SOL",
    "name": "Solana",
    "market": "crypto",
    "source": "binance",
-   "symbol": "SOLUSDT"
+   "symbol": "SOLUSDT",
+   "cg": "solana"
   },
   {
    "id": "BNB",
    "name": "BNB",
    "market": "crypto",
    "source": "binance",
-   "symbol": "BNBUSDT"
+   "symbol": "BNBUSDT",
+   "cg": "binancecoin"
   },
   {
    "id": "XRP",
    "name": "XRP",
    "market": "crypto",
    "source": "binance",
-   "symbol": "XRPUSDT"
+   "symbol": "XRPUSDT",
+   "cg": "ripple"
   },
   {
    "id": "ADA",
    "name": "Cardano",
    "market": "crypto",
    "source": "binance",
-   "symbol": "ADAUSDT"
+   "symbol": "ADAUSDT",
+   "cg": "cardano"
   },
   {
    "id": "DOGE",
    "name": "Dogecoin",
    "market": "crypto",
    "source": "binance",
-   "symbol": "DOGEUSDT"
+   "symbol": "DOGEUSDT",
+   "cg": "dogecoin"
   },
   {
    "id": "AVAX",
    "name": "Avalanche",
    "market": "crypto",
    "source": "binance",
-   "symbol": "AVAXUSDT"
+   "symbol": "AVAXUSDT",
+   "cg": "avalanche-2"
   },
   {
    "id": "LINK",
    "name": "Chainlink",
    "market": "crypto",
    "source": "binance",
-   "symbol": "LINKUSDT"
+   "symbol": "LINKUSDT",
+   "cg": "chainlink"
   },
   {
    "id": "DOT",
    "name": "Polkadot",
    "market": "crypto",
    "source": "binance",
-   "symbol": "DOTUSDT"
+   "symbol": "DOTUSDT",
+   "cg": "polkadot"
   },
   {
    "id": "TRX",
    "name": "TRON",
    "market": "crypto",
    "source": "binance",
-   "symbol": "TRXUSDT"
+   "symbol": "TRXUSDT",
+   "cg": "tron"
   },
   {
    "id": "LTC",
    "name": "Litecoin",
    "market": "crypto",
    "source": "binance",
-   "symbol": "LTCUSDT"
+   "symbol": "LTCUSDT",
+   "cg": "litecoin"
   },
   {
    "id": "ATOM",
    "name": "Cosmos",
    "market": "crypto",
    "source": "binance",
-   "symbol": "ATOMUSDT"
+   "symbol": "ATOMUSDT",
+   "cg": "cosmos"
   },
   {
    "id": "NEAR",
    "name": "NEAR Protocol",
    "market": "crypto",
    "source": "binance",
-   "symbol": "NEARUSDT"
+   "symbol": "NEARUSDT",
+   "cg": "near"
   },
   {
    "id": "UNI",
    "name": "Uniswap",
    "market": "crypto",
    "source": "binance",
-   "symbol": "UNIUSDT"
+   "symbol": "UNIUSDT",
+   "cg": "uniswap"
   },
   {
    "id": "ARB",
    "name": "Arbitrum",
    "market": "crypto",
    "source": "binance",
-   "symbol": "ARBUSDT"
+   "symbol": "ARBUSDT",
+   "cg": "arbitrum"
   },
   {
    "id": "OP",
    "name": "Optimism",
    "market": "crypto",
    "source": "binance",
-   "symbol": "OPUSDT"
+   "symbol": "OPUSDT",
+   "cg": "optimism"
   },
   {
    "id": "AAVE",
    "name": "Aave",
    "market": "crypto",
    "source": "binance",
-   "symbol": "AAVEUSDT"
+   "symbol": "AAVEUSDT",
+   "cg": "aave"
   },
   {
    "id": "SUI",
    "name": "Sui",
    "market": "crypto",
    "source": "binance",
-   "symbol": "SUIUSDT"
+   "symbol": "SUIUSDT",
+   "cg": "sui"
   },
   {
    "id": "INJ",
    "name": "Injective",
    "market": "crypto",
    "source": "binance",
-   "symbol": "INJUSDT"
+   "symbol": "INJUSDT",
+   "cg": "injective-protocol"
   }
  ]
 }

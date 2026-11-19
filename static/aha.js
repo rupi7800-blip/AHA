@@ -157,12 +157,11 @@ function renderChart(d) {
 // ---------------------------------------------------------------- caricamento
 async function load() {
   const my = ++state.req;
-  $("#status").textContent = "Calcolo…";
   try {
     const d = await api(`/api/aha/chart/${state.coin}?${query()}`);
     if (my !== state.req) return;
     renderSignal(d.signal); renderControls(d.signal.params || {}); renderChart(d);
-    $("#status").textContent = "";
+    pollStatus();
   } catch (e) {
     if (my !== state.req) return;
     $("#status").innerHTML = `<span class="err">${esc(e.message)}</span>`;
@@ -195,14 +194,26 @@ function pick(id) {
   load(); window.scrollTo({top: 0, behavior: "smooth"});
 }
 
+function ago(iso) {
+  if (!iso) return "mai";
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  return m < 1 ? "adesso" : m < 60 ? `${m} min fa` : m < 1440 ? `${Math.round(m / 60)} h fa` : `${Math.round(m / 1440)} giorni fa`;
+}
+
 async function pollStatus() {
+  clearTimeout(state.poll);
+  const btn = $("#refresh");
   try {
-    const s = await api("/api/status");
-    const st = s.state || s;
-    if (st.running) { $("#status").textContent = "Aggiornamento in corso: " + (st.progress || ""); setTimeout(pollStatus, 4000); }
-    else if (state.wasRunning) { state.wasRunning = false; await loadList(); load(); }
-    state.wasRunning = !!st.running;
-  } catch (e) {}
+    const st = await api("/api/status");
+    if (st.running) {
+      btn.disabled = true; btn.textContent = "Aggiornamento…";
+      $("#status").textContent = `Aggiornamento in corso: ${st.progress || ""} (${st.done || 0}/${st.total || "?"})`;
+      state.wasRunning = true; state.poll = setTimeout(pollStatus, 3000); return;
+    }
+    btn.disabled = false; btn.textContent = "Aggiorna dati";
+    $("#status").textContent = st.last_error ? "Ultimo aggiornamento fallito: vedi il registro del server" : `Dati aggiornati ${ago(st.last_run)}. Premi “Aggiorna dati” per scaricare i più recenti.`;
+    if (state.wasRunning) { state.wasRunning = false; await loadList(); load(); }
+  } catch (e) { btn.disabled = false; }
 }
 
 $("#coin").addEventListener("change", e => pick(e.target.value));

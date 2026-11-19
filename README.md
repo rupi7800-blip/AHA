@@ -34,6 +34,27 @@ take profit, orizzonte, affidabilità e percentuale storica fuori campione; graf
 MACD, MVRV, netflow exchange, SOPR, NVT, Fear & Greed) con i parametri **modificabili**: cambiando un valore, segnale,
 grafici e percentuali si ricalcolano (`GET /api/aha/chart/{id}?...`). `/classic` è la vecchia interfaccia GFIP.
 
+## Aggiornamento dei dati
+
+Solo manuale: tasto **Aggiorna dati** nell'interfaccia (o `POST /api/refresh`). Misurato su tutte e 20 le monete,
+da zero: 328 s tra download e analisi, su 4 CPU. Lo scheduler periodico è opt-in (`AHA_SCHEDULER=1`).
+
+## Integrazione con CryptoRadar
+
+`GET /api/aha/export[?only_active=true]` restituisce `{generatedAt, items: Signal[]}` con gli stessi nomi/tipi di
+CryptoRadar (camelCase, date ISO, id CoinGecko in `coins`, prezzi USD) più `side`, `targetPrice`, `stopPrice`,
+`confidence` (affidabilità fuori campione, 0-1), `winRateOos`, `nOos`, `reliability`, `horizonDays`.
+Lato CryptoRadar mancano (da fare nel suo repository): tabella `aha_signals`, job `refreshAhaSignals()` in
+`src/lib/ingest/aha.ts`, rotta `/api/signals`, variabile `AHA_BASE_URL`.
+
+## Esecuzione (predisposizione)
+
+`app/execution.py`: interfaccia `ExecutionAdapter`, esecutore simulato `PaperExecutor` e `plan_order`, che calcola la
+dimensione dal rischio (% del capitale perso allo stop) e applica controlli di sicurezza: interruttore generale (spento
+di default), affidabilità minima ("alta" di default), operazioni fuori campione minime, posizioni aperte, età del segnale,
+coerenza di stop e target. `LiveExecutor` NON è implementato e non invia ordini.
+API: `/api/aha/execution/config`, `/preview/{id}`, `/paper/{id}` (solo simulazione), `/positions`.
+
 ## Avvio
 
 ```bash
@@ -53,6 +74,6 @@ Test: `pip install -r requirements-dev.txt && pytest -q`
 
 1. Fatto: base crypto-only + livello dati + velocità.
 2. Fatto: segnali con on-chain, ricerca parametri, affidabilità e % storica.
-3. In corso: SOPR/NVT reali (chiave Glassnode salvata nell'ambiente, ma risponde ancora 401), derivati, pesi dei voti.
+3. In sospeso: SOPR/NVT reali (chiave Glassnode salvata nell'ambiente, ma l'API risponde 401), derivati, pesi dei voti.
 4. Fatto: grafici interattivi per smartphone con parametri modificabili.
-5. API per CryptoRadar e interfaccia `ExecutionAdapter` per gli exchange (automazione futura).
+5. Fatto lato AHA: export per CryptoRadar e interfaccia di esecuzione (solo simulata). Da fare: lato CryptoRadar e, in futuro, esecutore reale.
