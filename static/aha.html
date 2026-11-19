@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AHA - Alpha Horizon Crypto Analytics</title>
+<meta name="theme-color" content="#0f141b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AHA">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/static/aha.css?v={{V}}">
+<script defer src="/static/vendor/plotly.min.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo">◎</span> AHA <small>Alpha Horizon Crypto Analytics</small></div>
+  <select id="coin" aria-label="Moneta"></select>
+  <button class="btn" id="refresh" title="Aggiorna dati e analisi">Aggiorna</button>
+  <button class="btn ghost" id="theme" title="Tema chiaro/scuro">◐</button>
+</header>
+<div class="status" id="status"></div>
+<main>
+  <section class="card" id="signal"><div class="muted">Caricamento…</div></section>
+
+  <details class="card" id="controls">
+    <summary>Parametri degli indicatori <span class="muted" id="ctl-hint"></span></summary>
+    <p class="muted small">Per ogni indicatore AHA sceglie i parametri migliori sul primo 60% della storia. Cambiandone uno lo imposti tu:
+      segnale, grafici e percentuali storiche si ricalcolano subito.</p>
+    <div id="ctl-body"></div>
+    <div class="row"><button class="btn" id="auto">Torna ai parametri automatici</button></div>
+  </details>
+
+  <section class="card">
+    <div class="row between">
+      <h2>Grafici</h2>
+      <div class="seg" id="range">
+        <button data-d="90">3M</button><button data-d="180">6M</button><button data-d="365" class="on">1A</button><button data-d="730">2A</button>
+      </div>
+    </div>
+    <div id="chart"></div>
+    <div class="muted small" id="chart-note"></div>
+  </section>
+
+  <section class="card">
+    <h2>Tutte le monete</h2>
+    <div class="tablewrap"><table id="list"><thead><tr>
+      <th>Moneta</th><th>Segnale</th><th>Affidabilità</th><th title="Operazioni chiuse in positivo, solo periodo fuori campione">Successo</th>
+    </tr></thead><tbody></tbody></table></div>
+  </section>
+</main>
+<footer class="muted small">Dati reali da fonti pubbliche (Binance, CoinMetrics, Glassnode, Alternative.me). Le percentuali storiche non garantiscono risultati futuri. Non è una consulenza finanziaria.</footer>
+<script defer src="/static/aha.js?v={{V}}"></script>
+</body>
+</html>

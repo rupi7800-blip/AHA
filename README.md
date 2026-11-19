@@ -27,6 +27,13 @@ specializzata sulle criptovalute. Web app leggera (FastAPI + JS vanilla, install
 API: `GET /api/aha/signals` (elenco) e `GET /api/aha/signal/{id}?ema_fast=12&horizon=21&atr_stop=1.5...`
 (ricalcolo con parametri modificati: base per i grafici interattivi).
 
+## Interfaccia (passo 3)
+
+`/` è la nuova interfaccia AHA, pensata per smartphone (installabile come PWA): scheda del segnale con ingresso, stop loss,
+take profit, orizzonte, affidabilità e percentuale storica fuori campione; grafici Plotly (candele, EMA, Bollinger, RSI,
+MACD, MVRV, netflow exchange, SOPR, NVT, Fear & Greed) con i parametri **modificabili**: cambiando un valore, segnale,
+grafici e percentuali si ricalcolano (`GET /api/aha/chart/{id}?...`). `/classic` è la vecchia interfaccia GFIP.
+
 ## Avvio
 
 ```bash
@@ -46,6 +53,6 @@ Test: `pip install -r requirements-dev.txt && pytest -q`
 
 1. Fatto: base crypto-only + livello dati + velocità.
 2. Fatto: segnali con on-chain, ricerca parametri, affidabilità e % storica.
-3. Segnali: SOPR/NVT reali (chiave Glassnode), derivati, bilanciamento dei pesi dei voti.
-4. Grafici interattivi per smartphone con parametri modificabili.
+3. In corso: SOPR/NVT reali (chiave Glassnode salvata nell'ambiente, ma risponde ancora 401), derivati, pesi dei voti.
+4. Fatto: grafici interattivi per smartphone con parametri modificabili.
 5. API per CryptoRadar e interfaccia `ExecutionAdapter` per gli exchange (automazione futura).

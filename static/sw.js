@@ -3,7 +3,7 @@
 const V = "{{V}}";
 const SHELL = "aha-shell-" + V;
 const DATA = "aha-data";
-const PRECACHE = ["/", `/static/app.js?v=${V}`, `/static/style.css?v=${V}`, "/static/vendor/plotly.min.js",
+const PRECACHE = ["/", `/static/aha.js?v=${V}`, `/static/aha.css?v=${V}`, "/static/vendor/plotly.min.js",
   "/manifest.webmanifest", "/static/icons/icon-192.png", "/static/icons/icon-512.png"];
 const API_TIMEOUT = 10000;
 

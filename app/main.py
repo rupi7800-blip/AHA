@@ -281,7 +281,7 @@ async def _cache_headers(request, call_next):
     if path.startswith("/static/vendor/") or path.startswith("/static/icons/"):
         # librerie e icone non cambiano tra una versione e l'altra: il browser le tiene un mese
         resp.headers["Cache-Control"] = "public, max-age=2592000"
-    elif path in ("/", "/sw.js", "/manifest.webmanifest") or path.startswith("/static/") or path.startswith("/api/"):
+    elif path in ("/", "/classic", "/sw.js", "/manifest.webmanifest") or path.startswith("/static/") or path.startswith("/api/"):
         # interfaccia e dati: il browser chiede sempre al server (evita di restare su una versione vecchia)
         resp.headers["Cache-Control"] = "no-cache"
     return resp
@@ -289,6 +289,13 @@ async def _cache_headers(request, call_next):
 
 @app.get("/")
 def index():
+    html = (STATIC / "aha.html").read_text(encoding="utf-8").replace("{{V}}", pl.ENGINE_VERSION)
+    return HTMLResponse(html)
+
+
+@app.get("/classic")
+def classic():
+    """Interfaccia ereditata da GFIP (schede ancora in parte da adattare al solo mondo crypto)."""
     html = (STATIC / "index.html").read_text(encoding="utf-8").replace("{{V}}", pl.ENGINE_VERSION)
     return HTMLResponse(html)
 
@@ -348,20 +355,63 @@ def _aha_inputs(iid: str):
     return df, {k: v for k, v in oc.items() if len(v)}, storage.load_series("fear_greed:global")
 
 
+def _overrides(request: Request, skip=("days",)) -> dict:
+    over = {}
+    for k, v in request.query_params.items():
+        if k in skip:
+            continue
+        if k not in signals.DEFAULTS:
+            raise HTTPException(400, f"parametro sconosciuto: {k}")
+        try:
+            over[k] = int(float(v)) if _PARAM_TYPES[k] is int else float(v)
+        except ValueError:
+            raise HTTPException(400, f"valore non numerico per {k}")
+    return over
+
+
 @app.get("/api/aha/signal/{iid}")
 def aha_signal(iid: str, request: Request):
     """Segnale ricalcolato al volo. I parametri in query (es. ?ema_fast=12&ema_slow=26&horizon=21&atr_stop=1.5)
     sostituiscono la ricerca automatica: servono ai grafici interattivi."""
-    over = {}
-    for k, v in request.query_params.items():
-        if k not in signals.DEFAULTS:
-            raise HTTPException(400, f"parametro sconosciuto: {k}")
-        try:
-            over[k] = _PARAM_TYPES[k](float(v)) if _PARAM_TYPES[k] is int else float(v)
-        except ValueError:
-            raise HTTPException(400, f"valore non numerico per {k}")
     df, oc, fg = _aha_inputs(iid)
-    return pl.clean(signals.build_signal(df, oc, fg, overrides=over))
+    return pl.clean(signals.build_signal(df, oc, fg, overrides=_overrides(request)))
+
+
+@app.get("/api/aha/chart/{iid}")
+def aha_chart(iid: str, request: Request, days: int = 365):
+    """Tutte le serie per i grafici, calcolate con i parametri scelti (automatici o modificati in query)
+    insieme al segnale e alla sua prova storica."""
+    days = max(60, min(days, 1500))
+    df, oc, fg = _aha_inputs(iid)
+    sig = signals.build_signal(df, oc, fg, overrides=_overrides(request))
+    if "params" not in sig:
+        raise HTTPException(422, sig.get("why", "dati insufficienti"))
+    p = sig["params"]
+    c = df["close"]
+    ema_f, ema_s = ind.ema(c, int(p["ema_fast"])), ind.ema(c, int(p["ema_slow"]))
+    _m, bb_up, bb_lo, _w = ind.bollinger(c, int(p["bb_n"]), float(p["bb_k"]))
+    macd, macd_sig, macd_h = ind.macd(c, int(p["macd_f"]), int(p["macd_s"]), int(p["macd_sig"]))
+    rsi = ind.rsi(c, int(p["rsi_n"]))
+    tail = df.index[-days:]
+
+    def take(s):
+        return None if s is None else [None if not np.isfinite(x) else round(float(x), 6) for x in s.reindex(tail).values]
+
+    ex = signals._align(oc.get("ex_netflow_usd"), df.index, lag=0)
+    series = {
+        "t": [str(x.date()) for x in tail],
+        "o": take(df["open"]), "h": take(df["high"]), "l": take(df["low"]), "c": take(c),
+        "ema_fast": take(ema_f), "ema_slow": take(ema_s), "bb_up": take(bb_up), "bb_lo": take(bb_lo),
+        "rsi": take(rsi), "macd": take(macd), "macd_signal": take(macd_sig), "macd_hist": take(macd_h),
+        "mvrv": take(signals._align(oc.get("mvrv"), df.index, lag=0)),
+        "netflow_7d": take(ex.rolling(7, min_periods=5).sum()) if ex is not None else None,
+        "sopr": take(signals._align(oc.get("sopr"), df.index, lag=0)),
+        "nvt": take(signals._align(oc.get("nvt"), df.index, lag=0)),
+        "fear_greed": take(signals._align(fg, df.index, lag=0)) if len(fg) else None,
+    }
+    series = {k: v for k, v in series.items() if v is not None and any(x is not None for x in v)}
+    series["t"] = [str(x.date()) for x in tail]
+    return pl.clean({"series": series, "signal": sig})
 
 
 @app.get("/api/aha/signals")

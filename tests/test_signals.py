@@ -135,3 +135,19 @@ def test_glassnode_partial_and_unsupported(monkeypatch):
     r = onchain.Glassnode().metrics("btc")
     assert r.status == "ok" and "nvt" in r.df and "sopr" not in r.df and "sopr:" in r.message
     assert onchain.Glassnode().metrics("sol").status == "errore"
+
+
+def test_api_chart_endpoint(tmp_path):
+    from fastapi.testclient import TestClient
+    from app.main import app
+    storage.init(tmp_path / "t2.sqlite")
+    storage.replace_bars("ETH", "1d", synth(900, seed=8))
+    c = TestClient(app)
+    d = c.get("/api/aha/chart/ETH?days=120&ema_fast=9&ema_slow=40").json()
+    s = d["series"]
+    assert len(s["t"]) == 120 and len(s["c"]) == 120 and len(s["ema_fast"]) == 120
+    assert {"rsi", "macd", "bb_up", "bb_lo"} <= set(s) and "mvrv" not in s       # senza on-chain niente pannelli on-chain
+    assert d["signal"]["params"]["ema_fast"] == 9
+    assert c.get("/api/").status_code in (404, 405, 200)
+    assert c.get("/").status_code == 200 and "AHA" in c.get("/").text
+    assert c.get("/classic").status_code == 200
