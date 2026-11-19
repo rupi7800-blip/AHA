@@ -116,3 +116,20 @@ def test_api_rejects_invalid_parameters_and_hides_private_keys(tmp_path):
     assert cl.get("/api/aha/signal/BTC?atr_stop=1.5&exit_sr=0&trail=0").status_code == 200
     a = cl.get("/api/asset/BTC").json()
     assert "_trades" not in a["aha"] and "_outcomes" not in a["aha"]
+
+
+def test_optional_password_protects_everything_but_health(tmp_path, monkeypatch):
+    import base64
+    from fastapi.testclient import TestClient
+    from app.main import app
+    storage.init(tmp_path / "pw.sqlite")
+    c = TestClient(app)
+    assert c.get("/api/aha/signals").status_code == 200                                   # senza password impostata: aperto
+    monkeypatch.setenv("AHA_PASSWORD", "segreta")
+    assert c.get("/api/aha/signals").status_code == 401 and c.get("/").status_code == 401
+    assert c.post("/api/refresh").status_code == 401                                      # nemmeno l'aggiornamento
+    assert c.get("/api/status").status_code == 200                                        # controllo di salute libero
+    good = {"Authorization": "Basic " + base64.b64encode(b"qualsiasi:segreta").decode()}
+    bad = {"Authorization": "Basic " + base64.b64encode(b"x:sbagliata").decode()}
+    assert c.get("/api/aha/signals", headers=good).status_code == 200
+    assert c.get("/api/aha/signals", headers=bad).status_code == 401

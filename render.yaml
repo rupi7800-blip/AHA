@@ -1,0 +1,15 @@
+# Blueprint per Render (render.com): servizio web con disco persistente per il database.
+# Dopo il primo avvio apri l'indirizzo e premi "Aggiorna dati" (circa 5 minuti).
+services:
+  - type: web
+    name: aha
+    runtime: docker
+    plan: starter            # il piano gratuito si sospende e non ha disco persistente
+    healthCheckPath: /api/status
+    envVars:
+      - key: AHA_PASSWORD
+        sync: false          # impostala nel pannello di Render: protegge tutta l'app
+    disk:
+      name: aha-data
+      mountPath: /data
+      sizeGB: 1

@@ -278,6 +278,26 @@ def calibration():
 
 
 @app.middleware("http")
+async def _password(request, call_next):
+    """Protezione opzionale: se AHA_PASSWORD è impostata, tutto richiede HTTP Basic (nome utente qualsiasi).
+    /api/status resta libero per il controllo di salute del servizio (non contiene dati di mercato)."""
+    pw = os.environ.get("AHA_PASSWORD")
+    if pw and request.url.path != "/api/status":
+        import base64, hmac
+        got = request.headers.get("authorization", "")
+        ok = False
+        if got.lower().startswith("basic "):
+            try:
+                ok = hmac.compare_digest(base64.b64decode(got[6:]).decode("utf-8", "ignore").partition(":")[2], pw)
+            except Exception:
+                ok = False
+        if not ok:
+            from fastapi.responses import Response
+            return Response("Password richiesta", status_code=401, headers={"WWW-Authenticate": 'Basic realm="AHA"'})
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def _cache_headers(request, call_next):
     resp = await call_next(request)
     path = request.url.path

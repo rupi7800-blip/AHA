@@ -126,6 +126,14 @@ di default), affidabilità minima ("alta" di default), operazioni fuori campione
 coerenza di stop e target. `LiveExecutor` NON è implementato e non invia ordini.
 API: `/api/aha/execution/config`, `/preview/{id}`, `/paper/{id}` (solo simulazione), `/positions`.
 
+## Pubblicazione
+
+- **Istantanea consultabile**: `python tools/export_snapshot.py <cartella>` esporta i dati di oggi in JSON; `tools/snapshot_page/index.html`
+  è la pagina che li disegna (pubblicata come Artifact privato). Non ricalcola nulla.
+- **Versione viva** (con ricalcolo, backtest e parametri modificabili): `Dockerfile` e `render.yaml` (Render, piano con disco
+  persistente per il database). Imposta `AHA_PASSWORD` per proteggere tutto con una password (HTTP Basic, nome utente qualsiasi);
+  senza, chiunque conosca l'indirizzo può premere "Aggiorna dati". Dopo il primo avvio premi "Aggiorna dati" (circa 5 minuti).
+
 ## Avvio
 
 ```bash

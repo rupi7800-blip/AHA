@@ -1,0 +1,318 @@
+<meta name="dash-one-writer">
+<style>
+.ah { max-width: 1040px; margin: 0 auto; font-family: var(--font-anthropic-sans); color: var(--color-fg); }
+.ah h1 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0 0 var(--cds-gap-sm); }
+.ah h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: var(--cds-gap-xl) 0 var(--cds-gap-sm); scroll-margin-top: 12px; }
+.ah h3 { font-size: var(--cds-font-size-body); font-weight: var(--cds-font-weight-medium); margin: var(--cds-gap-lg) 0 var(--cds-gap-xs); }
+.ah p { margin: 0 0 var(--cds-gap-sm); line-height: 1.5; }
+.ah .ah-lead { font-size: var(--cds-font-size-heading); line-height: 1.45; max-width: 62ch; }
+.ah .ah-muted { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.ah .ah-nav { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); margin: var(--cds-gap-md) 0; }
+.ah .ah-nav a { color: var(--color-fg); text-decoration: none; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 4px 10px; font-size: var(--cds-font-size-caption); }
+.ah .ah-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); min-width: 0; }
+.ah .ah-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--cds-gap-md); }
+.ah .ah-kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--cds-gap-sm); margin: var(--cds-gap-sm) 0; }
+.ah .ah-kv div { min-width: 0; }
+.ah .ah-kv b { display: block; font-family: var(--font-anthropic-serif); font-weight: 400; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.ah .ah-kv span.l { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.ah .ah-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--color-border-line); font-size: var(--cds-font-size-caption); font-weight: var(--cds-font-weight-medium); }
+.ah .ah-badge.long { color: var(--color-ok); border-color: var(--color-ok); }
+.ah .ah-badge.short { color: var(--color-bad); border-color: var(--color-bad); }
+.ah .g-alta { color: var(--color-ok); } .ah .g-media { color: var(--color-warn); } .ah .g-bassa { color: var(--color-bad); }
+.ah .tw { overflow-x: auto; }
+.ah table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: var(--cds-font-size-caption); }
+.ah th, .ah td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.ah th { color: var(--color-fg-muted); font-weight: var(--cds-font-weight-medium); }
+.ah tbody tr.pick { cursor: pointer; } .ah tbody tr.pick:hover, .ah tbody tr.sel { background: var(--color-panel); }
+.ah .ah-chart { position: relative; min-height: 120px; }
+.ah .ah-chart svg { display: block; width: 100%; height: auto; }
+.ah .ah-chart .tip { position: absolute; pointer-events: none; padding: 6px 8px; font-size: var(--cds-font-size-caption); background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); color: var(--cds-text-secondary); border-radius: var(--cds-radius); white-space: nowrap; z-index: 3; }
+.ah .ah-chart text { fill: var(--cds-text-secondary); font-size: 11px; }
+.ah .ah-seg { display: inline-flex; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); overflow: hidden; }
+.ah .ah-seg button { background: transparent; color: var(--color-fg); border: 0; padding: 6px 12px; cursor: pointer; font: inherit; font-size: var(--cds-font-size-caption); }
+.ah .ah-seg button.on { background: var(--color-fg); color: var(--color-bg); }
+.ah .ah-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-gap-md); margin: var(--cds-gap-sm) 0; }
+.ah details { margin-top: var(--cds-gap-xl); } .ah summary { cursor: pointer; font-weight: var(--cds-font-weight-medium); }
+.ah details p { max-width: 70ch; }
+</style>
+<div class="ah">
+  <h1 id="top">AHA · Alpha Horizon Crypto Analytics</h1>
+  <p class="ah-lead" data-read lang="it">Fuori campione e con costi realistici, sul pool di <b data-draw="val" data-source="pool" data-where="strategy=aha&amp;side=long" data-field="coins" data-fmt="int">—</b> monete AHA ha reso
+    <b data-draw="val" data-source="pool" data-where="strategy=aha&amp;side=long" data-field="expectancy_r" data-fmt="r">—</b> per operazione sui long, contro
+    <b data-draw="val" data-source="pool" data-where="strategy=aha&amp;side=long" data-field="chance_r" data-fmt="r">—</b> che si ottiene entrando a caso con le stesse uscite.
+    L'affidabilità dei long è <b data-draw="grade" data-source="pool" data-where="strategy=aha&amp;side=long" data-field="grade">—</b>: il vantaggio non si distingue dal caso.</p>
+  <p class="ah-muted" data-read lang="it">Istantanea dei dati del <span data-draw="asof" data-source="coins" data-where="coin=BTC" data-field="asof">—</span>. Ogni numero mostra la sua origine in "Sources"; qui non si ricalcola nulla, il ricalcolo è nella versione viva di AHA. Non è una consulenza finanziaria.</p>
+  <nav class="ah-nav" aria-label="Sezioni">
+    <a href="#panoramica">Panoramica</a><a href="#moneta">Moneta</a><a href="#backtest">Backtest</a><a href="#ricerca">Ricerca</a><a href="#registro">Registro in avanti</a><a href="#metodo">Metodo e limiti</a>
+  </nav>
+
+  <h2 id="panoramica">Panoramica delle monete</h2>
+  <p class="ah-muted" data-read lang="it">Due strategie affiancate: AHA (voti di trend e on-chain, solo nel verso dell'EMA200, stop mobile) e la regola semplice (sopra l'EMA200 long, sotto short). L'affidabilità è quella del pool per il verso del segnale. Tocca una riga per aprire la moneta.</p>
+  <div class="tw"><table data-source="coins" data-row-key="coin">
+    <thead><tr><th data-field="coin">Moneta</th><th data-field="price">Prezzo</th><th data-field="aha_action">AHA</th><th data-field="aha_grade">Affid. AHA</th><th data-field="simple_action">Regola semplice</th><th data-field="simple_grade">Affid. semplice</th></tr></thead>
+    <tbody data-draw="overview"></tbody></table></div>
+
+  <h2 id="moneta">Moneta</h2>
+  <div class="ah-row"><label for="coin-select">Moneta</label><select id="coin-select" class="dash-select" data-draw="coin_select" data-source="coins" aria-label="Moneta"></select></div>
+  <div class="ah-grid" data-draw="signal_cards" data-source="coins"></div>
+  <h3>Prezzo, medie mobili esponenziali, Bande di Bollinger e livelli</h3>
+  <div class="ah-chart" data-draw="price_chart" data-source="series levels"></div>
+  <p class="ah-muted" data-read lang="it">Linee punteggiate: supporti e resistenze importanti (almeno due tocchi), con il numero di tocchi. Misurati da soli, questi livelli non rimbalzano più di punti qualunque: servono come criterio di invalidazione, non come previsione.</p>
+  <div class="ah-grid">
+    <div><h3>MACD (istogramma)</h3><div class="ah-chart" data-draw="macd_chart" data-source="series"></div></div>
+    <div><h3>MVRV</h3><div class="ah-chart" data-draw="mvrv_chart" data-source="series coins"></div></div>
+    <div><h3>Flussi netti verso gli exchange, 7 giorni (USD)</h3><div class="ah-chart" data-draw="flow_chart" data-source="series"></div></div>
+  </div>
+
+  <h2 id="backtest">Backtest sulla storia completa</h2>
+  <p class="ah-muted" data-read lang="it">Dalla nascita della moneta (chiusure CoinMetrics prima della quotazione su Binance, barre ricostruite e approssimate), funding dei perpetual incluso, capitale 100% investito durante un trade e senza leva. I totali sono dominati dagli anni iniziali: leggi la tabella per anno.</p>
+  <div class="ah-row"><span class="ah-seg" role="group" aria-label="Strategia"><button data-strat="simple" class="on">Regola semplice</button><button data-strat="aha">AHA</button></span></div>
+  <div data-draw="bt_stats" data-source="bt"></div>
+  <div class="ah-chart" data-draw="bt_chart" data-source="curves"></div>
+  <h3>Per anno</h3>
+  <div class="tw"><table><thead><tr><th>Anno</th><th>Operazioni</th><th>Vincite</th><th>Media per operazione</th><th>Multipli di rischio</th><th>Somma</th></tr></thead><tbody data-draw="bt_years"></tbody></table></div>
+
+  <h2 id="ricerca">Ricerca</h2>
+  <h3>Valutazione sul pool, fuori campione</h3>
+  <p class="ah-muted" data-read lang="it">Il "caso" è lo stesso insieme di trade con il calendario spostato di un numero casuale di giorni, uguale per tutte le monete, con le stesse uscite. R è il multiplo del rischio (distanza dallo stop), al netto dei costi.</p>
+  <div class="tw"><table><thead><tr><th>Strategia</th><th>Verso</th><th>Operazioni</th><th>Vincite</th><th>Guadagno/perdita</th><th>Aspettativa</th><th>Caso</th><th>p contro il caso</th><th>Costi doppi</th><th>Senza i 5 migliori</th><th>Affidabilità</th></tr></thead><tbody data-draw="pool_rows"></tbody></table></div>
+  <h3>Contro buy &amp; hold, fuori campione</h3>
+  <div class="tw"><table><thead><tr><th>Portafoglio equipesato</th><th>Totale</th><th>Annuo</th><th>Volatilità</th><th>Sharpe</th><th>Drawdown massimo</th></tr></thead><tbody data-draw="bench_rows"></tbody></table></div>
+  <p class="ah-muted" data-read lang="it">La strategia dimezza volatilità e drawdown, ma il rendimento aggiustato per il rischio è lo stesso del buy &amp; hold; con il funding gli short tolgono valore.</p>
+  <h3>Varianti provate</h3>
+  <p class="ah-muted" data-read lang="it">13 varianti in due giri, scelte solo sul periodo in campione. Il secondo giro è esplorativo. Nessuna variante ha un vantaggio distinguibile dal caso dopo la correzione per i confronti multipli.</p>
+  <div class="tw"><table><thead><tr><th>Giro</th><th>Variante</th><th>Verso</th><th>In campione</th><th>Fuori campione</th><th>Caso</th><th>p corretto</th><th>Senza i 5 migliori</th><th>Affidabilità</th></tr></thead><tbody data-draw="lab_rows"></tbody></table></div>
+
+  <h2 id="registro">Registro in avanti</h2>
+  <p class="ah-muted" data-read lang="it">Ogni segnale attivo viene registrato prima di conoscerne l'esito e valutato dopo con le stesse regole del backtest: è la prova fuori campione vera. Le voci aperte lo stesso giorno su monete diverse sono correlate (un solo mercato).</p>
+  <div class="tw"><table><thead><tr><th>Data</th><th>Moneta</th><th>Strategia</th><th>Verso</th><th>Stato</th><th>Esito</th></tr></thead><tbody data-draw="track_rows"></tbody></table></div>
+
+  <details><summary>Metodo e limiti</summary>
+    <p data-read lang="it">Simulazione prudente: segnale alla chiusura, ingresso all'apertura successiva, gap oltre lo stop = uscita all'apertura, stop prima del target nella stessa barra, 20 punti base per lato più 10 sugli stop. Stop iniziale oltre il supporto o la resistenza importante più vicini, poi stop mobile sugli ultimi minimi o massimi confermati. Parametri scelti solo sul primo 60% della storia.</p>
+    <p data-read lang="it">Limiti: le 20 monete sono i sopravvissuti; le soglie on-chain (MVRV 1 e 3,5) vengono da letteratura costruita su tutta la storia di Bitcoin; il periodo fuori campione era già stato visto nel primo giro del laboratorio e la regola semplice è stata scelta a posteriori; il funding non è incluso nelle statistiche per operazione; Glassnode (SOPR e NVT reali) è a pagamento e non è usato.</p>
+    <p data-read lang="it">I dati dal 10 settembre 2026 sono riservati e non entrano in nessuna statistica. Dopo il periodo di scelta la verifica che conta è il registro in avanti.</p>
+  </details>
+</div>
+<script>
+(function () {
+  const loc = d3.formatLocale({decimal: ",", thousands: ".", grouping: [3], currency: ["", " $"]});
+  const sg = (f) => (v) => (v == null || !isFinite(v) ? "—" : (v > 0 ? "+" : "") + loc.format(f)(v));
+  const FMT = {
+    r: (v) => (v == null ? "—" : sg(".2f")(v) + "R"), pct1: (v) => (v == null ? "—" : sg(".1f")(v) + "%"), pct0: (v) => (v == null ? "—" : sg(",.0f")(v) + "%"),
+    win: (v) => (v == null ? "—" : loc.format(".0%")(v)), int: (v) => (v == null ? "—" : loc.format(",d")(v)), n2: (v) => (v == null ? "—" : loc.format(".2f")(v)),
+    p: (v) => (v == null ? "—" : loc.format(".2f")(v)), price: (v) => (v == null ? "—" : loc.format(v >= 1000 ? ",.0f" : v >= 100 ? ",.1~f" : v >= 1 ? ".3~f" : ".5~f")(v)),
+    vol: (v) => (v == null ? "—" : loc.format(".0f")(v) + "%"), txt: (v) => (v == null || v === "" ? "—" : String(v)),
+  };
+  const S = {coin: "BTC", strat: "simple"};
+  const tl = d3.timeFormatLocale({dateTime: "%A %e %B %Y, %X", date: "%d/%m/%Y", time: "%H:%M:%S", periods: ["AM", "PM"],
+    days: ["domenica", "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato"], shortDays: ["dom", "lun", "mar", "mer", "gio", "ven", "sab"],
+    months: ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"],
+    shortMonths: ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"]});
+  const parseD = d3.utcParse("%Y-%m-%d"), fmtD = tl.utcFormat("%d/%m/%Y"), fmtM = tl.utcFormat("%b %Y");
+  const rows = (id) => { const d = dash.data(id); return d.status === "ok" ? d.data : null; };
+  const num = (v) => (v == null || v === "" ? null : +v);
+  const where = (w) => { const o = {}; (w || "").split("&").forEach((p) => { const i = p.indexOf("="); if (i > 0) o[p.slice(0, i)] = decodeURIComponent(p.slice(i + 1)); }); return o; };
+  const find = (data, w) => { const o = where(w); return data.find((r) => Object.keys(o).every((k) => String(r[k]) === o[k])); };
+  const redraw = (...n) => n.forEach((x) => dash.draw(x));
+  const DEP = ["signal_cards", "price_chart", "macd_chart", "mvrv_chart", "flow_chart", "bt_stats", "bt_chart", "bt_years", "overview"];
+
+  // cella marcata: elemento con la provenienza del valore
+  const cell = (tag, ds, field, w, text, cls) => { const e = document.createElement(tag); e.setAttribute("data-source", ds); e.setAttribute("data-field", field); e.setAttribute("data-where", w); e.textContent = text; if (cls) e.className = cls; return e; };
+  const gcls = (g) => (g === "alta" ? "g-alta" : g === "media" ? "g-media" : g === "bassa" ? "g-bassa" : "");
+
+  // valori nel testo
+  dash.draw("val", (el) => {
+    const d = rows(el.getAttribute("data-source")); if (!d) { el.textContent = "—"; return; }
+    const r = find(d, el.getAttribute("data-where")); const v = r ? r[el.getAttribute("data-field")] : null;
+    el.textContent = FMT[el.getAttribute("data-fmt") || "txt"](num(v));
+  });
+  dash.draw("grade", (el) => { const d = rows("pool"); const r = d && find(d, el.getAttribute("data-where")); el.textContent = r ? r.grade : "—"; el.className = r ? gcls(r.grade) : ""; });
+  dash.draw("asof", (el) => { const d = rows("coins"); const r = d && find(d, el.getAttribute("data-where")); const t = r && parseD(r.asof); el.textContent = t ? fmtD(t) : "—"; });
+
+  // panoramica
+  dash.draw("overview", (tb) => {
+    const d = rows("coins"); if (!d) { tb.replaceChildren(); return; }
+    tb.replaceChildren();
+    d.forEach((r) => {
+      const tr = document.createElement("tr"); tr.className = "pick" + (r.coin === S.coin ? " sel" : ""); tr.setAttribute("data-key", encodeURIComponent(r.coin));
+      const w = "coin=" + encodeURIComponent(r.coin);
+      tr.append(cell("td", "coins", "coin", w, r.coin), cell("td", "coins", "price", w, FMT.price(num(r.price))),
+        cell("td", "coins", "aha_action", w, r.aha_action), cell("td", "coins", "aha_grade", w, r.aha_grade || "—", gcls(r.aha_grade)),
+        cell("td", "coins", "simple_action", w, r.simple_action), cell("td", "coins", "simple_grade", w, r.simple_grade || "—", gcls(r.simple_grade)));
+      tr.onclick = () => { S.coin = r.coin; redraw(...DEP, "coin_select"); const t = document.getElementById("moneta"); if (t) t.scrollIntoView({behavior: "smooth"}); };
+      tb.append(tr);
+    });
+  });
+
+  dash.draw("coin_select", (sel) => {
+    const d = rows("coins"); sel.replaceChildren(); if (!d) return;
+    d.forEach((r) => sel.append(new Option(r.coin + " · " + r.name, r.coin)));
+    sel.value = S.coin;
+    sel.onchange = () => { S.coin = sel.value; redraw(...DEP); };
+  });
+
+  // schede dei segnali
+  dash.draw("signal_cards", (box) => {
+    const d = rows("coins"); box.replaceChildren(); if (!d) return;
+    const r = d.find((x) => x.coin === S.coin); if (!r) return;
+    const w = "coin=" + encodeURIComponent(r.coin);
+    [["aha", "AHA (voti + regime)"], ["simple", "Regola semplice"]].forEach(([k, title]) => {
+      const card = document.createElement("div"); card.className = "ah-card";
+      const h = document.createElement("div"); h.className = "ah-row";
+      const t = document.createElement("b"); t.textContent = title;
+      const side = r[k + "_side"]; const badge = cell("span", "coins", k + "_action", w, r[k + "_action"], "ah-badge " + (side === "long" ? "long" : side === "short" ? "short" : ""));
+      h.append(t, badge);
+      const kv = document.createElement("div"); kv.className = "ah-kv";
+      const item = (label, field, fmt, cls) => { const x = document.createElement("div"); const b = cell("b", "coins", field, w, FMT[fmt](fmt === "txt" ? r[field] : num(r[field])), cls); const l = document.createElement("span"); l.className = "l"; l.textContent = label; x.append(b, l); return x; };
+      if (side && side !== "-") { kv.append(item("Ingresso", k + "_entry", "price"), item("Stop iniziale", k + "_stop", "price"), item(k === "aha" ? "Livello indicativo" : "Livello indicativo", k + "_level", "price"), item("Rischio", k + "_risk_pct", "n2")); }
+      const note = document.createElement("p"); note.className = "ah-muted";
+      if (side && side !== "-") { note.append("Stop: ", cell("span", "coins", k + "_basis_stop", w, r[k + "_basis_stop"] || "—"), ". Livello: ", cell("span", "coins", k + "_basis_level", w, r[k + "_basis_level"] || "—"), ". Uscita: stop mobile, al massimo 60 giorni."); }
+      else { note.textContent = "Nessun ingresso utile oggi."; }
+      const rel = document.createElement("p"); rel.append("Affidabilità ", cell("b", "coins", k + "_grade", w, r[k + "_grade"] || "—", gcls(r[k + "_grade"])), ": ", cell("span", "coins", k + "_why", w, r[k + "_why"] || "—"));
+      card.append(h, kv, note, rel);
+      if (k === "aha") { const v = document.createElement("p"); v.className = "ah-muted"; v.append("Voti: ", cell("span", "coins", "aha_votes", w, r.aha_votes || "—")); card.append(v); }
+      box.append(card);
+    });
+  });
+
+  // ---- grafici
+  function frame(el, o) {
+    el.replaceChildren();
+    const W = Math.max(260, el.clientWidth || 600), H = o.height || 220, m = {l: 8, r: 10, t: 8, b: 22};
+    const svg = d3.select(el).append("svg").attr("viewBox", `0 0 ${W} ${H}`).attr("role", "img").attr("aria-label", o.label);
+    const y = (o.log ? d3.scaleLog().domain([o.ydomain[0] * 0.97, o.ydomain[1] * 1.03]) : d3.scaleLinear().domain(o.ydomain).nice()).range([H - m.b, m.t]);
+    let ticks = o.log ? y.ticks(6).filter((t) => t >= y.domain()[0] && t <= y.domain()[1]) : y.ticks(5);
+    if (o.log && y.domain()[1] / y.domain()[0] > 20) { const p10 = ticks.filter((t) => Math.abs(Math.log10(t) - Math.round(Math.log10(t))) < 1e-9); if (p10.length >= 3) ticks = p10; }
+    const probe = svg.append("g");
+    const widths = ticks.map((t) => { const x = probe.append("text").text(o.yfmt(t)); const w = x.node().getComputedTextLength(); x.remove(); return w; });
+    m.l = Math.min(80, Math.max(...widths, 20) + 10);
+    const x = d3.scaleUtc().domain(o.xdomain).range([m.l, W - m.r]);
+    const g = svg.append("g");
+    g.selectAll("line.grid").data(ticks).join("line").attr("x1", m.l).attr("x2", W - m.r).attr("y1", (t) => y(t)).attr("y2", (t) => y(t)).style("stroke", "var(--cds-chart-grid)");
+    g.selectAll("text.yt").data(ticks).join("text").attr("x", m.l - 6).attr("y", (t) => y(t) + 3).attr("text-anchor", "end").text((t) => o.yfmt(t));
+    const xt = x.ticks(Math.max(2, Math.floor((W - m.l) / 90)));
+    g.selectAll("text.xt").data(xt).join("text").attr("x", (t) => x(t)).attr("y", H - 6).attr("text-anchor", "middle").text((t) => fmtM(t));
+    return {svg, g, x, y, W, H, m};
+  }
+  function tooltip(el, f, xs, series, fmtx) {
+    const tip = document.createElement("div"); tip.className = "tip"; tip.hidden = true; el.append(tip);
+    const bis = d3.bisector((d) => d).center;
+    const mark = f.g.append("line").style("stroke", "var(--cds-chart-axis)").attr("y1", f.m.t).attr("y2", f.H - f.m.b).attr("opacity", 0);
+    const rect = f.svg.append("rect").attr("x", f.m.l).attr("y", 0).attr("width", f.W - f.m.l - f.m.r).attr("height", f.H).attr("fill", "transparent");
+    rect.on("pointermove", (ev) => {
+      const [px] = d3.pointer(ev, f.svg.node()); const k = bis(xs, f.x.invert(px));
+      mark.attr("x1", f.x(xs[k])).attr("x2", f.x(xs[k])).attr("opacity", 1);
+      tip.hidden = false; tip.textContent = fmtD(xs[k]) + " · " + series.map((s) => s.name + " " + s.fmt(s.values[k])).join(" · ");
+      const bw = el.clientWidth, left = Math.min(bw - tip.offsetWidth - 4, Math.max(4, f.x(xs[k]) * (bw / f.W) + 8)); tip.style.left = left + "px"; tip.style.top = "4px";
+    }).on("pointerleave", () => { tip.hidden = true; mark.attr("opacity", 0); });
+  }
+  const empty = (el, msg) => { el.replaceChildren(); const p = document.createElement("p"); p.className = "ah-muted"; p.textContent = msg; el.append(p); };
+  const forCoin = (id, key) => { const d = rows(id); return d ? d.filter((r) => r[key || "coin"] === S.coin) : null; };
+
+  dash.draw("price_chart", (el) => {
+    const d = forCoin("series"); if (!d || !d.length) { empty(el, "—"); return; }
+    const xs = d.map((r) => parseD(r.t));
+    const lv = (forCoin("levels") || []);
+    const vals = d.flatMap((r) => [num(r.c), num(r.bb_up), num(r.bb_lo)]).filter((v) => v != null && v > 0);
+    const f = frame(el, {label: "Prezzo di " + S.coin + " con medie mobili, bande e livelli", height: 260, ydomain: [d3.min(vals), d3.max(vals)], xdomain: d3.extent(xs), yfmt: (v) => FMT.price(v), log: true});
+    const line = (key, col, w, dash_) => { const ln = d3.line().defined((r) => r[key] != null && r[key] > 0).x((r, i) => f.x(xs[i])).y((r) => f.y(r[key])); const p = f.g.append("path").attr("d", ln(d)).attr("fill", "none").style("stroke", col).attr("stroke-width", w); if (dash_) p.attr("stroke-dasharray", dash_); };
+    const area = d3.area().defined((r) => r.bb_up != null && r.bb_lo != null && r.bb_up > 0 && r.bb_lo > 0).x((r, i) => f.x(xs[i])).y0((r) => f.y(r.bb_lo)).y1((r) => f.y(r.bb_up));
+    f.g.append("path").attr("d", area(d)).style("fill", "var(--cds-chart-muted)").attr("opacity", 0.18);
+    const inRange = lv.filter((z) => z.price >= f.y.domain()[0] && z.price <= f.y.domain()[1]);
+    inRange.forEach((z) => { f.g.append("line").attr("x1", f.m.l).attr("x2", f.W - f.m.r).attr("y1", f.y(z.price)).attr("y2", f.y(z.price)).style("stroke", "var(--cds-chart-reference)").attr("stroke-dasharray", "2 4");
+      f.g.append("text").attr("x", f.W - f.m.r - 2).attr("y", f.y(z.price) - 2).attr("text-anchor", "end").text(z.touches + "×"); });
+    line("ema_slow", dash.colors[2 % dash.colors.length], 1.2); line("ema_fast", dash.colors[1 % dash.colors.length], 1.2); line("c", dash.colors[0], 1.8);
+    tooltip(el, f, xs, [{name: "Chiusura", values: d.map((r) => num(r.c)), fmt: FMT.price}, {name: "EMA veloce", values: d.map((r) => num(r.ema_fast)), fmt: FMT.price}, {name: "EMA lenta", values: d.map((r) => num(r.ema_slow)), fmt: FMT.price}], null);
+  });
+
+  function barPanel(el, key, label, yfmt, good) {
+    const d = forCoin("series"); if (!d || !d.length) { empty(el, "—"); return; }
+    if (!d.some((r) => r[key] != null)) { empty(el, "Dato non disponibile gratuitamente per questa moneta."); return; }
+    const xs = d.map((r) => parseD(r.t)), vals = d.map((r) => num(r[key])).filter((v) => v != null);
+    const lo = Math.min(0, d3.min(vals)), hi = Math.max(0, d3.max(vals));
+    const f = frame(el, {label, height: 170, ydomain: [lo, hi], xdomain: d3.extent(xs), yfmt});
+    const bw = Math.max(1, (f.W - f.m.l - f.m.r) / d.length - 0.5);
+    f.g.selectAll("rect.b").data(d).join("rect").attr("x", (r, i) => f.x(xs[i]) - bw / 2).attr("width", bw).attr("y", (r) => (r[key] == null ? 0 : f.y(Math.max(0, r[key])))).attr("height", (r) => (r[key] == null ? 0 : Math.abs(f.y(r[key]) - f.y(0))))
+      .style("fill", (r) => ((r[key] || 0) * good >= 0 ? "var(--color-ok)" : "var(--color-bad)")).attr("opacity", 0.85);
+    tooltip(el, f, xs, [{name: label.split(" (")[0], values: d.map((r) => num(r[key])), fmt: (v) => (v == null ? "—" : yfmt(v))}], null);
+  }
+  dash.draw("macd_chart", (el) => barPanel(el, "macd_hist", "MACD (istogramma)", (v) => loc.format(",.4~g")(v), 1));
+  dash.draw("flow_chart", (el) => barPanel(el, "netflow_7d", "Flussi netti verso gli exchange (USD)", (v) => loc.format(".2s")(v).replace("G", " Mld").replace("M", " Mln").replace("k", " mila"), -1));
+  dash.draw("mvrv_chart", (el) => {
+    const d = forCoin("series"), c = rows("coins"); if (!d || !c) { empty(el, "—"); return; }
+    if (!d.some((r) => r.mvrv != null)) { empty(el, "Dato non disponibile gratuitamente per questa moneta."); return; }
+    const info = c.find((x) => x.coin === S.coin) || {};
+    const xs = d.map((r) => parseD(r.t)), v = d.map((r) => num(r.mvrv)).filter((q) => q != null);
+    const f = frame(el, {label: "MVRV di " + S.coin, height: 170, ydomain: [Math.min(d3.min(v), info.mvrv_lo), Math.max(d3.max(v), info.mvrv_hi)], xdomain: d3.extent(xs), yfmt: (q) => loc.format(".1f")(q)});
+    [[info.mvrv_lo, "var(--color-ok)"], [info.mvrv_hi, "var(--color-bad)"]].forEach(([yy, col]) => f.g.append("line").attr("x1", f.m.l).attr("x2", f.W - f.m.r).attr("y1", f.y(yy)).attr("y2", f.y(yy)).style("stroke", col).attr("stroke-dasharray", "3 4"));
+    const ln = d3.line().defined((r) => r.mvrv != null).x((r, i) => f.x(xs[i])).y((r) => f.y(r.mvrv));
+    f.g.append("path").attr("d", ln(d)).attr("fill", "none").style("stroke", dash.colors[0]).attr("stroke-width", 1.8);
+    tooltip(el, f, xs, [{name: "MVRV", values: d.map((r) => num(r.mvrv)), fmt: (q) => (q == null ? "—" : loc.format(".2f")(q))}], null);
+  });
+
+  // ---- backtest
+  dash.draw("bt_stats", (box) => {
+    box.replaceChildren(); const d = rows("bt"); if (!d) return;
+    const r = d.find((x) => x.coin === S.coin && x.strategy === S.strat); if (!r) { box.textContent = "Backtest non disponibile per questa moneta."; return; }
+    const w = "coin=" + encodeURIComponent(r.coin) + "&strategy=" + r.strategy;
+    const kv = document.createElement("div"); kv.className = "ah-kv";
+    const it = (label, field, fmt) => { const x = document.createElement("div"); const b = cell("b", "bt", field, w, FMT[fmt](num(r[field]))); const l = document.createElement("span"); l.className = "l"; l.textContent = label; x.append(b, l); return x; };
+    kv.append(it("Strategia, totale", "strat_total_pct", "pct0"), it("Buy & hold, totale", "bh_total_pct", "pct0"), it("Strategia, annuo", "strat_cagr_pct", "pct1"), it("Buy & hold, annuo", "bh_cagr_pct", "pct1"),
+      it("Volatilità strategia", "strat_vol_pct", "vol"), it("Volatilità buy & hold", "bh_vol_pct", "vol"), it("Drawdown strategia", "strat_maxdd_pct", "pct0"), it("Drawdown buy & hold", "bh_maxdd_pct", "pct0"),
+      it("Operazioni", "n_trades", "int"), it("Vincite", "win_rate", "win"), it("Guadagno/perdita", "payoff", "n2"), it("Aspettativa per operazione", "expectancy_r", "r"));
+    const p = document.createElement("p"); p.className = "ah-muted";
+    p.append("Finestra dal ", cell("span", "bt", "start", w, r.start), " al ", cell("span", "bt", "end", w, r.end), "; barre ricostruite dalle sole chiusure: ", cell("span", "bt", "synthetic_days", w, FMT.int(num(r.synthetic_days))), " giorni; in posizione il ", cell("span", "bt", "exposure_pct", w, FMT.vol(num(r.exposure_pct))), " dei giorni; funding dal ", cell("span", "bt", "funding_from", w, r.funding_from || "—"), ".");
+    box.append(kv, p);
+  });
+  dash.draw("bt_chart", (el) => {
+    const d = forCoin("curves"); if (!d) { empty(el, "—"); return; }
+    const c = d.filter((r) => r.strategy === S.strat); if (!c.length) { empty(el, "Backtest non disponibile per questa moneta."); return; }
+    const xs = c.map((r) => parseD(r.t)), vals = c.flatMap((r) => [num(r.strat), num(r.bh)]).filter((v) => v != null && v > 0);
+    const f = frame(el, {label: "Capitale di " + S.coin + ": strategia contro buy & hold, base 100, scala logaritmica", height: 280, log: true, ydomain: [Math.min(50, d3.min(vals)), d3.max(vals)], xdomain: d3.extent(xs), yfmt: (v) => loc.format(",.3~s")(v)});
+    const ln = (key, col, w) => f.g.append("path").attr("d", d3.line().x((r, i) => f.x(xs[i])).y((r) => f.y(Math.max(r[key], 1e-3)))(c)).attr("fill", "none").style("stroke", col).attr("stroke-width", w);
+    ln("bh", dash.colors[1 % dash.colors.length], 1.4); ln("strat", dash.colors[0], 1.9);
+    const lg = f.g.append("g"); lg.append("text").attr("x", f.m.l + 6).attr("y", f.m.t + 10).style("fill", dash.colors[0]).text("Strategia"); lg.append("text").attr("x", f.m.l + 70).attr("y", f.m.t + 10).style("fill", dash.colors[1 % dash.colors.length]).text("Buy & hold");
+    tooltip(el, f, xs, [{name: "Strategia", values: c.map((r) => num(r.strat)), fmt: (v) => loc.format(",.0f")(v)}, {name: "Buy & hold", values: c.map((r) => num(r.bh)), fmt: (v) => loc.format(",.0f")(v)}], null);
+  });
+  dash.draw("bt_years", (tb) => {
+    tb.replaceChildren(); const d = rows("yearly"); if (!d) return;
+    d.filter((r) => r.coin === S.coin && r.strategy === S.strat).forEach((r) => {
+      const w = "coin=" + encodeURIComponent(r.coin) + "&strategy=" + r.strategy + "&year=" + r.year; const tr = document.createElement("tr");
+      tr.append(cell("td", "yearly", "year", w, String(r.year)), cell("td", "yearly", "n", w, FMT.int(num(r.n))), cell("td", "yearly", "win_rate", w, FMT.win(num(r.win_rate))),
+        cell("td", "yearly", "expectancy_pct", w, FMT.pct1(num(r.expectancy_pct))), cell("td", "yearly", "expectancy_r", w, FMT.r(num(r.expectancy_r))), cell("td", "yearly", "sum_pct", w, FMT.pct0(num(r.sum_pct))));
+      tb.append(tr);
+    });
+  });
+  document.querySelectorAll("button[data-strat]").forEach((b) => { b.addEventListener("click", () => { S.strat = b.getAttribute("data-strat"); document.querySelectorAll("button[data-strat]").forEach((x) => x.classList.toggle("on", x === b)); redraw("bt_stats", "bt_chart", "bt_years"); }); });
+
+  // ---- ricerca e registro
+  const STRAT = {aha: "AHA", simple: "Regola semplice"};
+  dash.draw("pool_rows", (tb) => {
+    tb.replaceChildren(); const d = rows("pool"); if (!d) return;
+    d.forEach((r) => { const w = "strategy=" + r.strategy + "&side=" + r.side; const tr = document.createElement("tr");
+      tr.append(cell("td", "pool", "strategy", w, STRAT[r.strategy]), cell("td", "pool", "side", w, r.side), cell("td", "pool", "n", w, FMT.int(num(r.n))), cell("td", "pool", "win_rate", w, FMT.win(num(r.win_rate))),
+        cell("td", "pool", "payoff", w, FMT.n2(num(r.payoff))), cell("td", "pool", "expectancy_r", w, FMT.r(num(r.expectancy_r))), cell("td", "pool", "chance_r", w, FMT.r(num(r.chance_r))),
+        cell("td", "pool", "p_vs_chance", w, FMT.p(num(r.p_vs_chance))), cell("td", "pool", "double_costs_r", w, FMT.r(num(r.double_costs_r))), cell("td", "pool", "without_top5_r", w, FMT.r(num(r.without_top5_r))),
+        cell("td", "pool", "grade", w, r.grade, gcls(r.grade))); tb.append(tr); });
+  });
+  dash.draw("bench_rows", (tb) => {
+    tb.replaceChildren(); const d = rows("bench"); if (!d) return;
+    d.forEach((r) => { const w = "name=" + encodeURIComponent(r.name); const tr = document.createElement("tr");
+      tr.append(cell("td", "bench", "name", w, r.name), cell("td", "bench", "total_pct", w, FMT.pct0(num(r.total_pct))), cell("td", "bench", "cagr_pct", w, FMT.pct1(num(r.cagr_pct))),
+        cell("td", "bench", "vol_pct", w, FMT.vol(num(r.vol_pct))), cell("td", "bench", "sharpe", w, FMT.n2(num(r.sharpe))), cell("td", "bench", "max_dd_pct", w, FMT.pct0(num(r.max_dd_pct)))); tb.append(tr); });
+  });
+  dash.draw("lab_rows", (tb) => {
+    tb.replaceChildren(); const d = rows("lab"); if (!d) return;
+    d.forEach((r) => { const w = "round=" + r.round + "&variant=" + encodeURIComponent(r.variant) + "&side=" + r.side; const tr = document.createElement("tr");
+      tr.append(cell("td", "lab", "round", w, r.round), cell("td", "lab", "variant", w, r.variant), cell("td", "lab", "side", w, r.side), cell("td", "lab", "in_r", w, FMT.r(num(r.in_r)) + " (" + FMT.int(num(r.in_n)) + ")"),
+        cell("td", "lab", "oos_r", w, FMT.r(num(r.oos_r)) + " (" + FMT.int(num(r.oos_n)) + ")"), cell("td", "lab", "chance_r", w, FMT.r(num(r.chance_r))), cell("td", "lab", "p_holm", w, FMT.p(num(r.p_holm))),
+        cell("td", "lab", "without_top5_r", w, FMT.r(num(r.without_top5_r))), cell("td", "lab", "grade", w, r.grade, gcls(r.grade))); tb.append(tr); });
+  });
+  dash.draw("track_rows", (tb) => {
+    tb.replaceChildren(); const d = rows("track"); if (!d) return;
+    d.forEach((r) => { const w = "coin=" + encodeURIComponent(r.coin) + "&strategy=" + r.strategy + "&asof=" + r.asof; const tr = document.createElement("tr");
+      tr.append(cell("td", "track", "asof", w, r.asof), cell("td", "track", "coin", w, r.coin), cell("td", "track", "strategy", w, STRAT[r.strategy] || r.strategy), cell("td", "track", "side", w, r.side),
+        cell("td", "track", "status", w, r.status), cell("td", "track", "r", w, r.status === "chiuso" ? FMT.r(num(r.r)) + " (" + (r.exit || "") + ")" : "—")); tb.append(tr); });
+  });
+})();
+</script>
