@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Global Financial Intelligence Platform</title>
+<meta name="theme-color" content="#151b23">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AHA">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css?v={{V}}">
+<link rel="preload" href="/static/vendor/plotly.min.js" as="script">
+<!-- defer: la pagina si mostra subito, Plotly (4,8 MB) si carica in parallelo senza bloccarla -->
+<script defer src="/static/vendor/plotly.min.js"></script>
+</head>
+<body>
+<header class="top">
+  <button class="burger" id="burger" aria-label="Menu">☰</button>
+  <div class="brand"><span class="logo">◎</span> AHA <small>Alpha Horizon Crypto Analytics</small></div>
+  <div class="status" id="status">…</div>
+  <span class="chip w" id="offline" style="display:none" title="Il server non risponde: dati dell'ultimo collegamento salvati sul dispositivo">offline</span>
+  <button class="btn ghost" id="install" style="display:none" title="Installa l'app su questo dispositivo">Installa</button>
+  <button class="btn ghost" id="newver" style="display:none;border-color:var(--warn);color:var(--warn)" title="È disponibile una nuova versione dell'app">Nuova versione: aggiorna</button>
+  <button class="btn" id="refresh" title="Aggiorna dati e analisi">Aggiorna</button>
+  <button class="btn ghost" id="theme" title="Tema chiaro/scuro">◐</button>
+</header>
+<nav class="side" id="side">
+  <a href="#panoramica">Panoramica</a>
+  <a href="#segnali">Segnali semplici</a>
+  <a href="#scanner">Opportunity Scanner</a>
+  <a href="#radar">Market Radar</a>
+  <a href="#news">News Intelligence</a>
+  <a href="#watchlist">Watchlist e alert</a>
+  <a href="#backtest">Backtest</a>
+  <a href="#calibrazione">Verifica previsioni</a>
+  <a href="#impostazioni">Impostazioni</a>
+  <div class="side-note"><span id="ver"></span><br>Dati reali da fonti pubbliche. Nessun dato è simulato. Non è una consulenza finanziaria.</div>
+</nav>
+<main id="view"></main>
+<div id="toast" class="toast"></div>
+<script defer src="/static/app.js?v={{V}}"></script>
+</body>
+</html>
