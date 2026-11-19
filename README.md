@@ -13,8 +13,19 @@ specializzata sulle criptovalute. Web app leggera (FastAPI + JS vanilla, install
   - `adapters.py`: prezzi OHLCV Binance (mirror `data-api.binance.vision` se l'host principale è bloccato).
   - `onchain.py`: CoinMetrics community (MVRV, indirizzi attivi, flussi da/verso exchange, capitalizzazione),
     DefiLlama (TVL), Alternative.me (Fear & Greed) e Glassnode (con chiave `GLASSNODE_API_KEY`: SOPR, NVT).
-- Il livello on-chain è pronto ma **non ancora collegato** ai segnali né ai grafici (passi successivi).
-- Il fix alla lentezza di GFIP è nei passi successivi (vedi sotto).
+- Velocità: walk-forward con finestra mobile; ciclo di 3 monete in circa 30 s (GFIP: oltre 15 minuti per una).
+
+## Segnali (passo 2)
+
+`app/signals.py` combina EMA, RSI, MACD, Bollinger, MVRV, flussi exchange e Fear & Greed:
+- i parametri di ogni indicatore sono scelti su una griglia usando solo il primo 60% della storia;
+- il segnale (long/short, entry, stop loss e take profit a multipli di ATR, orizzonte) è provato sull'intera storia
+  con gli stessi stop/target e con i costi; **l'affidabilità si basa solo sul 40% finale (fuori campione)**,
+  confrontato con l'ingresso casuale nella stessa direzione;
+- le metriche on-chain mancanti per una moneta non votano e sono dichiarate (`onchain_missing`).
+
+API: `GET /api/aha/signals` (elenco) e `GET /api/aha/signal/{id}?ema_fast=12&horizon=21&atr_stop=1.5...`
+(ricalcolo con parametri modificati: base per i grafici interattivi).
 
 ## Avvio
 
@@ -33,8 +44,8 @@ Test: `pip install -r requirements-dev.txt && pytest -q`
 
 ## Roadmap
 
-1. (questo passo) Base crypto-only + livello dati.
-2. Integrazione on-chain nei segnali, EMA/RSI/MACD/Bollinger con ricerca dei parametri in walk-forward.
-3. Segnali completi: long/short, stop loss, take profit, orizzonte, affidabilità e % storica di esito positivo.
+1. Fatto: base crypto-only + livello dati + velocità.
+2. Fatto: segnali con on-chain, ricerca parametri, affidabilità e % storica.
+3. Segnali: SOPR/NVT reali (chiave Glassnode), derivati, bilanciamento dei pesi dei voti.
 4. Grafici interattivi per smartphone con parametri modificabili.
 5. API per CryptoRadar e interfaccia `ExecutionAdapter` per gli exchange (automazione futura).

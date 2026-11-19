@@ -21,7 +21,9 @@ from . import storage
 from .analysis import indicators as ind
 from .analysis import stats_models as sm
 from .backtest import backtest_rule
+from . import signals
 from .data.adapters import ADAPTERS
+from .data.onchain import COINMETRICS, FEARGREED
 from .predict.model import HORIZONS, INTRADAY_HORIZONS, walk_forward
 from .scanner import RULES, active_signals, score_opportunity
 from .plans import build_plans
@@ -143,6 +145,36 @@ def fetch_instrument(inst: dict, force=False):
             if "taker_buy_ratio" in res.meta:
                 storage.save_series(f"takerbuy:{inst['id']}:{iv}", res.meta["taker_buy_ratio"].tail(400))
         storage.log_fetch(inst["id"], iv, res.source, res.status, res.delay, res.message)
+
+
+ONCHAIN_REFRESH_H = 12
+ONCHAIN_COLS = ("mvrv", "ex_netflow_usd", "ex_inflow_usd", "ex_outflow_usd", "active_addresses", "market_cap", "nvt_proxy")
+
+
+def _fresh(iid, iv, hours):
+    info = storage.fetch_info(iid, iv)
+    return bool(info) and (pd.Timestamp.now("UTC") - pd.Timestamp(info["fetched_at"])).total_seconds() < hours * 3600
+
+
+def fetch_onchain(inst: dict, force=False):
+    """Metriche on-chain gratuite (CoinMetrics community): ogni 12 ore, anche se la moneta non è coperta
+    (in quel caso resta registrato l'errore e i segnali usano solo tecnica e sentiment)."""
+    if _fresh(inst["id"], "onchain", ONCHAIN_REFRESH_H) and not force:
+        return
+    res = COINMETRICS.metrics(inst.get("cm") or inst["id"].lower())
+    if res.status == "ok":
+        for col in res.df.columns:
+            storage.save_series(f"onchain:{inst['id']}:{col}", res.df[col])
+    storage.log_fetch(inst["id"], "onchain", res.source, res.status, res.delay, res.message)
+
+
+def fetch_fear_greed(force=False):
+    if _fresh("_global", "fear_greed", 6) and not force:
+        return
+    res = FEARGREED.index()
+    if res.status == "ok":
+        storage.save_series("fear_greed:global", res.df["fear_greed"])
+    storage.log_fetch("_global", "fear_greed", res.source, res.status, res.delay, res.message)
 
 
 # ------------------------------------------------------------------ analisi di un asset
@@ -360,6 +392,12 @@ def analyze_instrument(inst: dict, cfg: dict, db_path: str) -> dict:
                     "potential_horizon": best_h,
                     "probability": (preds[best_h]["probabilities"] if best_h and preds[best_h].get("shown_as_probability") else None)})
     out["opportunity"] = opp
+    # ---------------- segnale AHA (tecnica + on-chain + sentiment) con prova storica
+    try:
+        oc = {c: storage.load_series(f"onchain:{inst['id']}:{c}") for c in ONCHAIN_COLS}
+        out["aha"] = signals.build_signal(dfa, {k: v for k, v in oc.items() if len(v)}, storage.load_series("fear_greed:global"))
+    except Exception as e:
+        out["aha"] = {"direction": 0, "action": "ERRORE", "why": f"errore nel calcolo del segnale: {e}"}
     # serie per i grafici (ultimi 3 anni)
     tail = dfa.tail(756)
     m, ub, lb, _ = ind.bollinger(dfa["close"])
@@ -550,6 +588,19 @@ def download_all(insts, force=False):
             n_done[0] += 1
             STATE["progress"] = f"download {n_done[0]}/{len(insts)} ({inst['name']})"
 
+    def onchain():
+        try:
+            fetch_fear_greed(force)
+        except Exception as e:
+            log.warning("fear&greed: %s", e)
+        for inst in insts:
+            try:
+                fetch_onchain(inst, force)
+            except Exception as e:
+                storage.log_fetch(inst["id"], "onchain", "CoinMetrics", "errore", "-", str(e)[:300])
+
+    oc_thread = threading.Thread(target=onchain, name="dl-onchain", daemon=True)
+    oc_thread.start()
     pools = {src: ThreadPoolExecutor(max_workers=n, thread_name_prefix=f"dl-{src}") for src, n in FETCH_WORKERS.items()}
     other = ThreadPoolExecutor(max_workers=2, thread_name_prefix="dl-other")
     try:
@@ -559,6 +610,7 @@ def download_all(insts, force=False):
     finally:
         for p in list(pools.values()) + [other]:
             p.shutdown(wait=True)
+    oc_thread.join(timeout=300)
 
 
 _cycle_lock = threading.Lock()

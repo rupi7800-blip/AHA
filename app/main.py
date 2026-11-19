@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import pipeline as pl
-from . import storage
+from . import signals, storage
 from .analysis import indicators as ind
 from .backtest import backtest_rule
 from .scanner import OPPORTUNITY_TYPES, RULES, RULES_BY_ID
@@ -121,6 +121,9 @@ def overview():
                      "source": m.get("source"), "delay": m.get("delay"), "last_bar": m.get("last_bar"),
                      "vol_regime": (a.get("statistical") or {}).get("vol_regime"),
                      "n_signals": len(a.get("signals", [])), "error": a.get("error"),
+                     "aha": {k: (a.get("aha") or {}).get(k) for k in ("action", "side", "entry", "stop_loss", "take_profit", "horizon_days")}
+                            | {"grade": ((a.get("aha") or {}).get("reliability") or {}).get("grade"),
+                               "win_rate_oos": (((a.get("aha") or {}).get("history") or {}).get("out_of_sample") or {}).get("win_rate")},
                      "lat_lon": None})
     return {"instruments": rows, "markets": pl.UNIVERSE["markets"], "global": storage.kv_get("global") or {},
             "alerts": storage.list_alerts(15), "status": pl.STATE}
@@ -327,3 +330,52 @@ def connect_info(request: Request):
 
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+
+
+# ------------------------------------------------------------------ segnali AHA
+_PARAM_TYPES = {k: type(v) for k, v in signals.DEFAULTS.items()}
+
+
+def _aha_inputs(iid: str):
+    inst = pl.instrument(iid)
+    if not inst:
+        raise HTTPException(404, "strumento sconosciuto")
+    df = storage.load_bars(iid, "1d")
+    if len(df) < 2:
+        raise HTTPException(404, "dati non ancora scaricati")
+    df = df.iloc[:-1]                      # la barra in formazione non entra nei segnali
+    oc = {c: storage.load_series(f"onchain:{iid}:{c}") for c in pl.ONCHAIN_COLS}
+    return df, {k: v for k, v in oc.items() if len(v)}, storage.load_series("fear_greed:global")
+
+
+@app.get("/api/aha/signal/{iid}")
+def aha_signal(iid: str, request: Request):
+    """Segnale ricalcolato al volo. I parametri in query (es. ?ema_fast=12&ema_slow=26&horizon=21&atr_stop=1.5)
+    sostituiscono la ricerca automatica: servono ai grafici interattivi."""
+    over = {}
+    for k, v in request.query_params.items():
+        if k not in signals.DEFAULTS:
+            raise HTTPException(400, f"parametro sconosciuto: {k}")
+        try:
+            over[k] = _PARAM_TYPES[k](float(v)) if _PARAM_TYPES[k] is int else float(v)
+        except ValueError:
+            raise HTTPException(400, f"valore non numerico per {k}")
+    df, oc, fg = _aha_inputs(iid)
+    return pl.clean(signals.build_signal(df, oc, fg, overrides=over))
+
+
+@app.get("/api/aha/signals")
+def aha_signals(only_active: bool = False):
+    """Elenco dei segnali correnti (dall'ultima analisi), con affidabilità e percentuale storica fuori campione."""
+    rows = []
+    for inst in pl.instruments():
+        a = storage.kv_get(f"analysis:{inst['id']}") or {}
+        s = a.get("aha")
+        if not s or (only_active and not s.get("direction")):
+            continue
+        rows.append({"id": inst["id"], "name": inst["name"], **{k: s.get(k) for k in (
+            "action", "side", "entry", "stop_loss", "take_profit", "horizon_days", "risk_reward", "score", "asof", "positioning")},
+            "reliability": s.get("reliability"), "win_rate_oos": ((s.get("history") or {}).get("out_of_sample") or {}).get("win_rate"),
+            "n_oos": ((s.get("history") or {}).get("out_of_sample") or {}).get("n"), "onchain_used": s.get("onchain_used")})
+    rows.sort(key=lambda r: (not r["side"], -((r["reliability"] or {}).get("score") or 0)))
+    return {"signals": rows}
