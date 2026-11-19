@@ -25,6 +25,7 @@ from __future__ import annotations
 import warnings
 
 import numpy as np
+from threadpoolctl import threadpool_limits
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
@@ -77,11 +78,15 @@ class BaseRate:
     def predict_proba(self, X): return np.tile(self.p, (len(X), 1))
 
 
+MAX_TRAIN = 1500   # finestra mobile di stima (barre): costo costante e modello meno legato a regimi lontani
+
+
 class Logit:
     name = "logit"
     def fit(self, X, y):
-        self.m = make_pipeline(StandardScaler(), LogisticRegression(C=0.05, max_iter=500))
-        self.m.fit(X, y.astype(int))
+        self.m = make_pipeline(StandardScaler(), LogisticRegression(C=0.05, max_iter=100, tol=1e-3))
+        with threadpool_limits(1):   # BLAS multi-thread su pochi dati: più lento, e si contende la CPU con gli altri processi
+            self.m.fit(X, y.astype(int))
         self.cls = self.m.classes_
         return self
     def predict_proba(self, X):
@@ -136,7 +141,7 @@ def walk_forward(feat: pd.DataFrame, close: pd.Series, h: int, level=False, step
         last_lab = len(idx) - 1 - h  # ultima posizione con etichetta nota (al momento più recente)
         for s in range(start, last_lab + 1, step):
             train_end = s - h            # embargo: le etichette di stima terminano prima di s
-            tr = np.arange(0, train_end)
+            tr = np.arange(max(0, train_end - MAX_TRAIN), train_end)
             tr = tr[np.isfinite(yv[tr])]
             te = np.arange(s, min(s + step, last_lab + 1))
             te = te[np.isfinite(yv[te])]
@@ -154,7 +159,7 @@ def walk_forward(feat: pd.DataFrame, close: pd.Series, h: int, level=False, step
         else:
             res["n_oos"] = 0
         # modello finale: tutte le etichette note fino ad ora (fine stima = ultima etichetta nota)
-        tr = np.arange(0, last_lab + 1); tr = tr[np.isfinite(yv[tr])]
+        tr = np.arange(max(0, last_lab + 1 - MAX_TRAIN), last_lab + 1); tr = tr[np.isfinite(yv[tr])]
         if len(tr) >= MIN_TRAIN:
             mdl = MODEL_CLASSES[m]().fit(Xv[tr], yv[tr])
             res["current"] = mdl.predict_proba(Xv[-1:])[0].tolist()
