@@ -181,7 +181,8 @@ def test_current_signals_drop_incomplete_bar_and_states(monkeypatch):
     idx = pd.date_range(end=today, periods=n, freq="D")           # l'ultima barra e' quella di OGGI (incompleta)
     up = 100 * np.exp(np.cumsum(np.full(n, 0.004)))
     dn = 100 * np.exp(np.cumsum(np.r_[np.full(n - 80, 0.004), np.full(80, -0.01)]))
-    mk = lambda c: pd.DataFrame({"open": c, "high": c * 1.005, "low": c * 0.995, "close": c, "volume": 1.0}, index=idx)
+    mk = lambda c: pd.DataFrame({"open": c, "high": c * 1.005, "low": c * 0.995, "close": c, "volume": 1.0},
+                                index=idx[-len(c):])          # serie corte: ultimi len(c) giorni, finiscono oggi
     _fake_bars(monkeypatch, {"UP": mk(up), "DN": mk(dn), "NEW": mk(up[:20])})
     out = {r["symbol"]: r for r in de.current_signals(["UP", "DN", "NEW"])}
     assert out["UP"]["state"] in ("LONG", "INGRESSO (nuovo segnale)")
