@@ -25,10 +25,17 @@ def donchian(df: pd.DataFrame, entry_n: int, exit_n: int):
     return up, lo
 
 
+def _ema_or_off(df: pd.DataFrame, ema_n) -> pd.Series:
+    """EMA del close; con ema_n=None/0 il filtro e' spento (EMA = -inf: close > EMA sempre, close < EMA mai)."""
+    if not ema_n:
+        return pd.Series(-np.inf, index=df.index)
+    return ema(df["close"], ema_n)
+
+
 def positions(df: pd.DataFrame, entry_n=55, exit_n=20, ema_n=60) -> pd.Series:
     """Posizione desiderata (0/1) decisa alla chiusura di ogni barra."""
     up, lo = donchian(df, entry_n, exit_n)
-    e = ema(df["close"], ema_n)
+    e = _ema_or_off(df, ema_n)
     c = df["close"]
     enter = ((c > up) & (c > e)).values
     leave = ((c < lo) | (c < e)).values
@@ -58,7 +65,7 @@ def positions_atr(df: pd.DataFrame, entry_n=55, ema_n=60, k=3.0, atr_n=14) -> pd
     scende sotto (massimo close dall'ingresso - k * ATR) o sotto l'EMA."""
     from .analysis.indicators import atr
     up, _ = donchian(df, entry_n, 2)
-    e = ema(df["close"], ema_n).values
+    e = _ema_or_off(df, ema_n).values
     a = atr(df, atr_n).values
     c = df["close"].values
     u = up.values
@@ -140,7 +147,7 @@ def walk_forward(df: pd.DataFrame, entries=(20, 40, 55, 100), exits=(10, 20), em
     """Sceglie (entry_n, exit_n) sul primo `split` della storia (massimo Sharpe), poi li valuta sul resto.
     Gli indicatori sono calcolati sull'intera serie (causali), il confronto è fatto sul tratto di test."""
     cut = int(len(df) * split)
-    if cut < ema_n + max(entries) + 10 or len(df) - cut < 30:
+    if cut < (ema_n or 0) + max(entries) + 10 or len(df) - cut < 30:
         return {"error": "storia insufficiente", "n_bars": int(len(df))}
     grid = []
     for en, ex in itertools.product(entries, exits):
@@ -276,3 +283,116 @@ def study(symbols=("BTCUSDT", "ETHUSDT"), interval="1d", **kw) -> dict:
         df = storage.load_bars(s, interval)
         out[s] = walk_forward(df, **kw) if len(df) else {"error": "nessun dato nel DB (eseguire la pipeline)"}
     return out
+
+
+def robustness(bars: dict, params=((40, 20), (55, 20)), emas=(None, 40, 60, 100, 200),
+               costs_bps_per_side=(10, 20, 40, 100), train_bars=1095, test_bars=365) -> list:
+    """Sensibilita' del portafoglio equal-weight (parametri FISSI, nessuna ottimizzazione) a lunghezza EMA e costi.
+    `costs_bps_per_side` e' il costo totale (commissione + slippage) per lato. ema None = solo Donchian."""
+    rows = []
+    for (en, ex), e, c in itertools.product(params, emas, costs_bps_per_side):
+        res = {sym: rolling_walk_forward(df, entries=(en,), exits=(ex,), ema_n=e, train_bars=train_bars,
+                                         test_bars=test_bars, cost_bps=c / 2, slippage_bps=c / 2)
+               for sym, df in bars.items()}
+        p = portfolio(res)
+        if "error" in p:
+            continue
+        rows.append({"entry_n": en, "exit_n": ex, "ema_n": e, "cost_bps_per_side": c, "n_assets": p["n_assets"],
+                     "sharpe": p["portfolio_oos"].get("sharpe"), "cagr_pct": p["portfolio_oos"].get("cagr_pct"),
+                     "max_dd_pct": p["portfolio_oos"].get("max_drawdown_pct"),
+                     "exposure_pct": p["portfolio_oos"].get("exposure_pct"),
+                     "bh_sharpe": p["portfolio_buy_hold"].get("sharpe"),
+                     "assets_above_bh": p["assets_sharpe_above_bh"]})
+    return rows
+
+
+def current_signals(symbols=None, entry_n=40, exit_n=20, ema_n=60, interval="1d") -> list:
+    """Stato corrente della strategia per ogni simbolo, sull'ULTIMA BARRA CHIUSA (la barra del giorno in corso
+    e' incompleta e viene scartata). Segnale a chiusura t => esecuzione alla chiusura di t+1, come nel backtest.
+    Restituisce stato, livelli di innesco per la prossima chiusura e distanza percentuale da essi."""
+    from . import storage
+    if symbols is None:
+        import json
+        from pathlib import Path
+        uni = json.loads((Path(__file__).resolve().parent.parent / "config" / "universe.json").read_text())
+        symbols = [i["symbol"] for i in uni["instruments"] if i.get("market") == "crypto"]
+    today = pd.Timestamp.now("UTC").normalize()
+    out = []
+    for sym in symbols:
+        df = storage.load_bars(sym, interval)
+        if len(df):
+            df = df[df.index < today]  # solo barre giornaliere chiuse
+        if len(df) < max(entry_n, ema_n) + 5:
+            out.append({"symbol": sym, "state": "DATI INSUFFICIENTI"})
+            continue
+        pos = positions(df, entry_n, exit_n, ema_n)
+        c, e = float(df["close"].iloc[-1]), float(ema(df["close"], ema_n).iloc[-1])
+        entry_level = float(df["high"].iloc[-entry_n:].max())   # la prossima chiusura deve superarlo
+        exit_level = float(df["low"].iloc[-exit_n:].min())      # sotto questo livello si esce
+        cur, prev = pos.iloc[-1], (pos.iloc[-2] if len(pos) > 1 else 0.0)
+        if cur == 1 and prev == 0:
+            state = "INGRESSO (nuovo segnale)"
+        elif cur == 0 and prev == 1:
+            state = "USCITA (nuovo segnale)"
+        else:
+            state = "LONG" if cur == 1 else "FLAT"
+        run_len = 0
+        for v in pos.values[::-1]:
+            if v != cur:
+                break
+            run_len += 1
+        out.append({"symbol": sym, "state": state, "last_closed_bar": str(df.index[-1])[:10], "close": c,
+                    "ema": e, "close_vs_ema_pct": (c / e - 1) * 100,
+                    "entry_level": entry_level, "to_entry_pct": (entry_level / c - 1) * 100,
+                    "exit_level": exit_level, "to_exit_pct": (exit_level / c - 1) * 100, "bars_in_state": run_len})
+    return out
+
+
+def refresh_bars(symbols, interval="1d") -> dict:
+    """Aggiorna nel DB le barre recenti da Binance (scarica solo dall'ultima barra salvata)."""
+    from . import storage
+    from .data.adapters import Binance
+    b, res = Binance(), {}
+    for sym in symbols:
+        old = storage.load_bars(sym, interval)
+        r = b.bars(sym, interval, since=old.index[-1] if len(old) else None)
+        if len(r.df):
+            storage.save_bars(sym, interval, r.df)
+        res[sym] = len(r.df)
+    return res
+
+
+def _fmt(v, d=2):
+    return "n/d" if v is None else f"{v:.{d}f}"
+
+
+if __name__ == "__main__":  # python -m app.donchian_ema [signals|robustness] [--refresh]
+    import sys
+    from . import storage
+    storage.init()
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "signals"
+    if cmd == "signals":
+        if "--refresh" in sys.argv:
+            import json
+            from pathlib import Path
+            uni = json.loads((Path(__file__).resolve().parent.parent / "config" / "universe.json").read_text())
+            print("aggiornamento barre:", refresh_bars([i["symbol"] for i in uni["instruments"] if i.get("market") == "crypto"]))
+        print(f"{'simbolo':9s} {'stato':24s} {'barra':10s} {'close':>11s} {'vsEMA%':>7s} {'a_ingr%':>8s} {'a_usc%':>7s} {'barre':>5s}")
+        for r in current_signals():
+            if "close" not in r:
+                print(f"{r['symbol']:9s} {r['state']}")
+                continue
+            print(f"{r['symbol']:9s} {r['state']:24s} {r['last_closed_bar']:10s} {r['close']:11.4f} "
+                  f"{r['close_vs_ema_pct']:7.1f} {r['to_entry_pct']:8.1f} {r['to_exit_pct']:7.1f} {r['bars_in_state']:5d}")
+    elif cmd == "robustness":
+        import json
+        from pathlib import Path
+        uni = json.loads((Path(__file__).resolve().parent.parent / "config" / "universe.json").read_text())
+        bars = {i["symbol"]: storage.load_bars(i["symbol"], "1d") for i in uni["instruments"] if i.get("market") == "crypto"}
+        print("entry exit  EMA  costo/lato  Sharpe  CAGR%   DD%   Espos%  B&H_Sh  asset>B&H")
+        for r in robustness(bars):
+            print(f"{r['entry_n']:5d} {r['exit_n']:4d} {str(r['ema_n']):>5s} {r['cost_bps_per_side']:8d}bp "
+                  f"{_fmt(r['sharpe']):>7s} {_fmt(r['cagr_pct'],1):>6s} {_fmt(r['max_dd_pct'],1):>6s} "
+                  f"{_fmt(r['exposure_pct'],1):>7s} {_fmt(r['bh_sharpe']):>7s} {r['assets_above_bh']:>5d}")
+    else:
+        sys.exit("uso: python -m app.donchian_ema [signals [--refresh] | robustness]")

@@ -149,3 +149,43 @@ def test_hourly_bars_per_year_changes_annualisation():
     # SE = sqrt(barre_anno / n): il rapporto tra le due annualizzazioni e' sqrt(8760/365)
     assert abs(h["sharpe_se_approx"] / d["sharpe_se_approx"] - (8760 / 365) ** 0.5) < 1e-9
     assert h["oos"]["sharpe"] != d["oos"]["sharpe"]
+
+
+def test_ema_filter_can_be_disabled():
+    df = _trend_then_crash()
+    p = de.positions(df, 40, 20, ema_n=None)
+    assert set(p.unique()) <= {0.0, 1.0}
+    pd.testing.assert_series_equal(p.iloc[:250], de.positions(df.iloc[:250], 40, 20, ema_n=None))
+    assert p.iloc[:300].max() == 1.0 and p.iloc[-1] == 0.0       # esce comunque sul minimo del canale
+    assert set(de.positions_atr(df, 40, ema_n=None).unique()) <= {0.0, 1.0}
+
+
+def test_robustness_costs_never_improve_sharpe():
+    bars = {"A": _trend_then_crash(900, 600, seed=1), "B": _trend_then_crash(900, 600, seed=2)}
+    rows = de.robustness(bars, params=((40, 20),), emas=(None, 60), costs_bps_per_side=(10, 40, 100),
+                         train_bars=500, test_bars=250)
+    assert len(rows) == 6
+    for e in (None, 60):
+        sh = [r["sharpe"] for r in rows if r["ema_n"] == e]       # stesso ordine dei costi crescenti
+        assert sh == sorted(sh, reverse=True)
+
+
+def _fake_bars(monkeypatch, series):
+    from app import storage
+    monkeypatch.setattr(storage, "load_bars", lambda sym, interval="1d": series[sym])
+
+
+def test_current_signals_drop_incomplete_bar_and_states(monkeypatch):
+    n = 400
+    today = pd.Timestamp.now("UTC").normalize()
+    idx = pd.date_range(end=today, periods=n, freq="D")           # l'ultima barra e' quella di OGGI (incompleta)
+    up = 100 * np.exp(np.cumsum(np.full(n, 0.004)))
+    dn = 100 * np.exp(np.cumsum(np.r_[np.full(n - 80, 0.004), np.full(80, -0.01)]))
+    mk = lambda c: pd.DataFrame({"open": c, "high": c * 1.005, "low": c * 0.995, "close": c, "volume": 1.0}, index=idx)
+    _fake_bars(monkeypatch, {"UP": mk(up), "DN": mk(dn), "NEW": mk(up[:20])})
+    out = {r["symbol"]: r for r in de.current_signals(["UP", "DN", "NEW"])}
+    assert out["UP"]["state"] in ("LONG", "INGRESSO (nuovo segnale)")
+    assert out["UP"]["last_closed_bar"] == str((today - pd.Timedelta(days=1)).date())   # barra di oggi scartata
+    assert out["DN"]["state"] in ("FLAT", "USCITA (nuovo segnale)")
+    assert out["NEW"]["state"] == "DATI INSUFFICIENTI"
+    assert out["UP"]["exit_level"] < out["UP"]["close"] < out["UP"]["entry_level"] * 1.01
