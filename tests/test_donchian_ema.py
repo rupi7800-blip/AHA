@@ -93,3 +93,59 @@ def test_exposure_trades_and_scaled_benchmark():
     assert res["buy_hold_test_scaled"]["max_drawdown_pct"] >= res["buy_hold_test"]["max_drawdown_pct"]
     eff = de.effective_positions(df, **{k: res["best_params"][k] for k in ("entry_n", "exit_n", "ema_n")})
     assert set(eff.unique()) <= {0.0, 1.0}
+
+
+def test_atr_variant_causal_and_exits():
+    df = _trend_then_crash()
+    p_full = de.positions_atr(df)
+    p_cut = de.positions_atr(df.iloc[:250])
+    pd.testing.assert_series_equal(p_full.iloc[:250], p_cut)
+    assert p_full.iloc[:300].max() == 1.0 and p_full.iloc[-1] == 0.0
+
+
+def test_vol_size_capped_and_causal():
+    df = _trend_then_crash()
+    s = de.vol_size(df, cap=1.0)
+    assert s.max() <= 1.0 and s.min() >= 0.0
+    pd.testing.assert_series_equal(s.iloc[:200], de.vol_size(df.iloc[:200]))
+
+
+def test_build_pos_variants_and_unknown():
+    df = _trend_then_crash()
+    base = de.build_pos(df, "base", 40, 20)
+    vt = de.build_pos(df, "voltarget", 40, 20)
+    assert (vt <= base + 1e-12).all()                      # nessuna leva: taglia <= posizione base
+    assert set(de.build_pos(df, "atr", 40, 3.0).unique()) <= {0.0, 1.0}
+    try:
+        de.build_pos(df, "boh", 1, 1)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("variante sconosciuta deve fallire")
+
+
+def test_rolling_variants_and_fixed_params():
+    df = _trend_then_crash(900, 600)
+    for v in ("atr", "voltarget"):
+        res = de.rolling_walk_forward(df, train_bars=500, test_bars=250, variant=v)
+        assert res["variant"] == v and res["n_windows"] == 4 and res["oos"]["n_bars"] == 1000
+    fixed = de.rolling_walk_forward(df, entries=(40,), exits=(20,), train_bars=500, test_bars=250)
+    assert set(fixed["param_choices"]) == {(40, 20)}      # nessuna ottimizzazione: stessi parametri ovunque
+
+
+def test_portfolio_aggregation():
+    a = de.rolling_walk_forward(_trend_then_crash(900, 600, seed=1), train_bars=500, test_bars=250)
+    b = de.rolling_walk_forward(_trend_then_crash(900, 600, seed=2), train_bars=500, test_bars=250)
+    p = de.portfolio({"A": a, "B": b, "C": {"error": "storia insufficiente"}})
+    assert p["n_assets"] == 2 and set(p["per_asset"]) == {"A", "B"}
+    assert 0 <= p["assets_sharpe_above_bh"] <= 2
+    assert "error" in de.portfolio({"C": {"error": "x"}})
+
+
+def test_hourly_bars_per_year_changes_annualisation():
+    df = _trend_then_crash(900, 600)
+    d = de.rolling_walk_forward(df, train_bars=500, test_bars=250)
+    h = de.rolling_walk_forward(df, train_bars=500, test_bars=250, bars_per_year=8760)
+    # SE = sqrt(barre_anno / n): il rapporto tra le due annualizzazioni e' sqrt(8760/365)
+    assert abs(h["sharpe_se_approx"] / d["sharpe_se_approx"] - (8760 / 365) ** 0.5) < 1e-9
+    assert h["oos"]["sharpe"] != d["oos"]["sharpe"]
