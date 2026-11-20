@@ -53,15 +53,21 @@ def run(df: pd.DataFrame, entry_n=55, exit_n=20, ema_n=60, cost_bps=5.0, slippag
     return eff * ret - turnover * (cost_bps + slippage_bps) / 1e4
 
 
-def stats(r: pd.Series, bars_per_year=365) -> dict:
-    """Metriche su una serie di rendimenti log per barra (le barre crypto sono 365/anno)."""
+def effective_positions(df: pd.DataFrame, entry_n=55, exit_n=20, ema_n=60) -> pd.Series:
+    """Posizione realmente detenuta per barra (segnale a t, esecuzione a t+1: lag 2)."""
+    return positions(df, entry_n, exit_n, ema_n).shift(2).fillna(0.0)
+
+
+def stats(r: pd.Series, bars_per_year=365, exposure: pd.Series | None = None) -> dict:
+    """Metriche su una serie di rendimenti log per barra (le barre crypto sono 365/anno).
+    `exposure`: posizione detenuta per barra; se assente l'esposizione è stimata da r != 0."""
     if len(r) < 2:
         return {"n_bars": int(len(r))}
     eq = r.cumsum()
     dd = (eq - eq.cummax()).min()
     sd = r.std(ddof=1)
     dsd = np.sqrt((r.clip(upper=0) ** 2).mean())  # deviazione al ribasso su TUTTE le barre
-    active = (r != 0)
+    expo = float(exposure.mean()) if exposure is not None else float((r != 0).mean())
     return {
         "n_bars": int(len(r)),
         "total_return_pct": float((np.exp(eq.iloc[-1]) - 1) * 100),
@@ -69,7 +75,7 @@ def stats(r: pd.Series, bars_per_year=365) -> dict:
         "sharpe": float(r.mean() / sd * np.sqrt(bars_per_year)) if sd > 0 else None,
         "sortino": float(r.mean() / dsd * np.sqrt(bars_per_year)) if dsd and dsd > 0 else None,
         "max_drawdown_pct": float((np.exp(dd) - 1) * 100),
-        "exposure_pct": float(active.mean() * 100),
+        "exposure_pct": expo * 100,
     }
 
 
@@ -99,14 +105,22 @@ def walk_forward(df: pd.DataFrame, entries=(20, 40, 55, 100), exits=(10, 20), em
     best = max(ranked, key=lambda g: g["train_sharpe"])
     r = run(df, best["entry_n"], best["exit_n"], ema_n, cost_bps, slippage_bps)
     bh = np.log(df["close"]).diff().fillna(0.0)
+    eff = effective_positions(df, best["entry_n"], best["exit_n"], ema_n)
+    pos = positions(df, best["entry_n"], best["exit_n"], ema_n)
+    entries_mask = pos.diff().fillna(pos) == 1
     test_slice = slice(cut, None)
     # per le prime barre del test la posizione dipende da segnali del train: è corretto (causale)
+    test_expo = float(eff.iloc[test_slice].mean())
     return {
         "best_params": {"entry_n": best["entry_n"], "exit_n": best["exit_n"], "ema_n": ema_n},
         "grid_train": sorted(grid, key=lambda g: -(g["train_sharpe"] or -9)),
-        "train": stats(r.iloc[:cut]), "test": stats(r.iloc[test_slice]),
+        "train": stats(r.iloc[:cut], exposure=eff.iloc[:cut]),
+        "test": stats(r.iloc[test_slice], exposure=eff.iloc[test_slice]),
         "buy_hold_train": stats(bh.iloc[:cut]), "buy_hold_test": stats(bh.iloc[test_slice]),
-        "trades_total": count_trades(df, best["entry_n"], best["exit_n"], ema_n),
+        # B&H scalato alla stessa esposizione media della strategia: il confronto equo sul rischio
+        "buy_hold_test_scaled": stats(bh.iloc[test_slice] * test_expo),
+        "trades_total": int(entries_mask.sum()),
+        "trades_test": int(entries_mask.iloc[cut:].sum()),
         "split_date": str(df.index[cut])[:10],
         "costs_bps_per_side": cost_bps + slippage_bps,
     }

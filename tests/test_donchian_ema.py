@@ -57,3 +57,14 @@ def test_walk_forward_structure_and_insufficient_history():
     assert {"best_params", "train", "test", "buy_hold_test", "grid_train"} <= set(res)
     assert res["best_params"]["exit_n"] < res["best_params"]["entry_n"]
     assert "error" in de.walk_forward(df.iloc[:60])
+
+
+def test_exposure_trades_and_scaled_benchmark():
+    df = _trend_then_crash(500, 300)
+    res = de.walk_forward(df)
+    assert 0 <= res["test"]["exposure_pct"] <= 100
+    assert res["trades_test"] <= res["trades_total"]
+    # B&H scalato: stessa esposizione media => volatilità minore del B&H pieno
+    assert res["buy_hold_test_scaled"]["max_drawdown_pct"] >= res["buy_hold_test"]["max_drawdown_pct"]
+    eff = de.effective_positions(df, **{k: res["best_params"][k] for k in ("entry_n", "exit_n", "ema_n")})
+    assert set(eff.unique()) <= {0.0, 1.0}
