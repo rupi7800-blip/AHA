@@ -59,6 +59,31 @@ def test_walk_forward_structure_and_insufficient_history():
     assert "error" in de.walk_forward(df.iloc[:60])
 
 
+def test_rolling_walk_forward_structure_and_oos_coverage():
+    df = _trend_then_crash(900, 600)
+    res = de.rolling_walk_forward(df, train_bars=500, test_bars=250)
+    assert res["n_windows"] == 4                      # (1500-500)//250
+    assert len(res["param_choices"]) == res["n_windows"]
+    # le finestre OOS sono contigue e non si sovrappongono
+    froms = [w["test_from"] for w in res["windows"]]
+    tos = [w["test_to"] for w in res["windows"]]
+    assert froms == sorted(froms) and all(t < f for t, f in zip(tos[:-1], froms[1:]))
+    assert 0 <= res["oos"]["exposure_pct"] <= 100
+    assert res["oos"]["n_bars"] == 1000
+    assert "error" in de.rolling_walk_forward(df.iloc[:300])
+
+
+def test_rolling_params_use_only_past_data():
+    # modificare i prezzi DOPO la prima finestra di test non cambia i parametri scelti per la prima finestra
+    df = _trend_then_crash(900, 600)
+    base = de.rolling_walk_forward(df, train_bars=500, test_bars=250)
+    df2 = df.copy()
+    df2.iloc[900:] = df2.iloc[900:] * 1.5            # dopo la fine della prima finestra di test (500+250=750 -> barre >=750)
+    chg = de.rolling_walk_forward(df2, train_bars=500, test_bars=250)
+    assert base["param_choices"][0] == chg["param_choices"][0]
+    assert base["param_choices"][1] == chg["param_choices"][1]
+
+
 def test_exposure_trades_and_scaled_benchmark():
     df = _trend_then_crash(500, 300)
     res = de.walk_forward(df)
